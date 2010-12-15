@@ -152,31 +152,17 @@ We encountered difficulties in getting both the modified and unmodified version 
 
 \subsection{Channels}
 
-To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were substantially larger (24-200 bytes). As shown in Table \ref{tab:channel_latency}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can easily push ??? MB/s even for small 4 byte messages (Table \ref{tab:channel_tput}).
+To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were a bit larger (<200 bytes). As shown in Table \ref{tab:channel}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can still push 2.5 MB/s even for small 4 byte messages.
 
 \begin{table}[tp]
-\caption{Channel Latency}
-\label{tab:channel_latency}
+\caption{Channel Benchmarks}
 \centering
-\begin{tabular}{|l | l | l | l |}
+\label{tab:channel}
+\begin{tabular}{| l | l | l | l | l |}
 \hline
-		&Latency ($\mu$s)	&Median	&Std dev\\ \hline
-4B		&0.14	&0.13	&0.049\\
-32B		&30.60	&16.67	&37.24\\
-128B	&0.16	&0.18	&0.033\\
-512B	&0.26	&0.15	&0.42\\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[tp]
-\caption{Channel Throughput (MB/s)}
-\centering
-\label{tab:channel_tput}
-\begin{tabular}{|l | l | l | l | l |}
-\hline
-			&4B 	& 32B	& 128B	& 512B \\ \hline
-Throughput	&0.26	&0.15	&0.42	& 0.42 \\
+						&4B 	& 32B	&512B	&1024B\\ \hline
+Throughput (MB/s)		&2.5	&20.1	&280.0	&583.5\\
+Latency ($\mu$s/msg)	&1.53	&1.52	&1.74	&1.67\\
 \hline
 \end{tabular}
 \end{table}
