@@ -30,6 +30,7 @@
 \usepackage{multirow}
 \usepackage{hhline}
 \usepackage{ifthen}
+\usepackage{url}
 \begin{document}
 
 %don't want date printed
@@ -105,12 +106,6 @@ int wrap_fact(ClientData clientData,
 \end{verbatim}
 }
 
-Now we're going to cite somebody.  Watch for the cite tag.
-Here it comes~\cite{Chaum1981,Diffie1976}.  The tilde character (\~{})
-in the source means a non-breaking space.  This way, your reference will
-always be attached to the word that preceded it, instead of going to the
-next line.
-
 \section{Implementation}
 \subsection{Channels}
 We should mention these things in this section:
@@ -155,16 +150,6 @@ The purpose of resource allocation daemon is to provide any services and clients
 One point to note here is that the client will not request, say, a guaranteed portion of the graphic driver directly to the resource allocation daemon. It's actually the service will request a big portion of this resource. Then, the client will request its portion of this resource from the service to do whatever the client wants. 
 
 There is a huge possibility of separating the policy from the mechanism in our system. In that case, different priorities could be assigned to the clients and a client who has a higher priority will be entitled to more share of the resources. However, due to time constraints, we leave this possibility for future work
- 
-Here's a typical figure reference.  The figure is centered at the
-top of the column.  It's scaled.  It's explicitly placed.  You'll
-have to tweak the numbers to get what you want.\\
-
-
-
-This text came after the figure, so we'll casually refer to Figure 1
-as we go on our merry way.
-
 
 \section{Evaluation}
 
@@ -216,9 +201,11 @@ Throughput	&0.26	&0.15	&0.42	& 0.42 \\
 \end{table}
 
 
-\subsubsection{Browser}
+\subsubsection{Web Browser}
 
-The other measurement that we are evaluating our system on is by running a web browser, followed by SunSpider, a JavaScript benchmark. The result of this benchmark is similar as the previous one except that our implementation fares much better here.
+The first user application we chose for testing was a simple Qt web browser based on WebKit. Browsers are probably one of the most commonly used and installed user applications, making a browser a representative choice as a "real world" application. Browsers also have the benefit of having numerous benchmark and test suites, such as SunSpider\cite{sunspider}, Kraken\cite{kraken}, and V8 \cite{v8benchmark}.
+
+of the two applications chosen for testing was a simple web browser based on the WebKit browser engine. 
 
 \subsubsection{Textedit}
 
