@@ -23,6 +23,13 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix,epsfig,endnotes}
 \usepackage{subfigure}
+\usepackage{color}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{calc}
+\usepackage{multirow}
+\usepackage{hhline}
+\usepackage{ifthen}
 \begin{document}
 
 %don't want date printed
@@ -153,6 +160,14 @@ Here's a typical figure reference.  The figure is centered at the
 top of the column.  It's scaled.  It's explicitly placed.  You'll
 have to tweak the numbers to get what you want.\\
 
+
+
+This text came after the figure, so we'll casually refer to Figure 1
+as we go on our merry way.
+
+
+\section{Evaluation}
+
 % you can also use the wonderful epsfig package...
 \begin{figure*}[t]
   \begin{center}
@@ -160,25 +175,73 @@ have to tweak the numbers to get what you want.\\
     \subfigure[Textedit latency measurements]{\label{fig:edge-b}\includegraphics[scale=0.75]{textedit.ps}} \\
   \end{center}
   \label{fig:benchmarks}
+  \caption{Comparison between unmodified and channels-based versions of Qt}
 \end{figure*}
 
+\subsubsection{Test setup}
 
-This text came after the figure, so we'll casually refer to Figure 1
-as we go on our merry way.
+The test harness used was a commodity desktop PC with a quad core Intel i7-870 processor clocked at 2.93 GHz and 4GB of RAM. Hyperthreading, Turbo Boost, and power saving states were all disabled to normalize the performance of the CPU cores. Loaded conditions were simulated by running 128 CPU-bound background threads. This number is somewhat arbitrary, but a lower or higher number of threads would likely result in a proportional change without effecting the meaning of our results.
 
-\section{Evaluation}
+We encountered difficulties in getting both the modified and unmodified version of Qt to run correctly on an actual framebuffer. As a substitute, all tests were run on the Qt Embedded virtual framebuffer, an X11 application. This means there are additional layers of software, such as X11 and the WM, that interpose between user input and the I/O server. However, our timings are done above these layers, and we believe that this favors neither the unmodified nor channels-based version of Qt.
 
-In this section, we examine how does our system perform on guaranteeing the promised resources even under tremendous load. Our experiments is run with Intel i7-880 2.93-GHz quad-core processors and inside the Qt virtual framebuffer. Load is simulated in our system by running 128 cpu-bound threads that runs an infinite loop.
+\subsubsection{Channels}
 
-<TABLE X> summarizes the latency of using our implementation of channels with varying message sizes. As we can see, the latency of sending a message from one point to another is very low.
+To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were substantially larger (24-200 bytes). As shown in Table \ref{tab:channel_latency}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can easily push ??? MB/s even for small 4 byte messages (Table \ref{tab:channel_tput}).
+
+\begin{table}[tp]
+\caption{Channel Latency}
+\label{tab:channel_latency}
+\centering
+\begin{tabular}{|l | l | l | l |}
+\hline
+		&Latency ($\mu$s)	&Median	&Std dev\\ \hline
+4B		&0.14	&0.13	&0.049\\
+64B		&30.60	&16.67	&37.24\\
+128B	&0.16	&0.18	&0.033\\
+512B	&0.26	&0.15	&0.42\\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[tp]
+\caption{Channel Throughput (MB/s)}
+\centering
+\label{tab:channel_tput}
+\begin{tabular}{|l | l | l | l | l |}
+\hline
+			&4B 	& 64B	& 128B	& 512B \\ \hline
+Throughput	&0.26	&0.15	&0.42	& 0.42 \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\subsubsection{Browser}
+
+The other measurement that we are evaluating our system on is by running a web browser, followed by SunSpider, a JavaScript benchmark. The result of this benchmark is similar as the previous one except that our implementation fares much better here.
+
+\subsubsection{Textedit}
 
 To illustrate interactivity in our experiments, we use Qt sample textedit program and one of us will mash the keyboard and mouse for a couple of minutes and the latency between when the keyboard is pressed until when the change is reflected in the screen is measured. We also ensure that the events (i.e. keyboard or mouse pressed event) that are received in the server are all forwarded to the clients. Thus, our implementation is very reliable since it doesn't drop any of the registered events. 
 
-As it can be seen in <GRAPH X>, our implementation loses to Qt performance-wise under no load. One speculation that we made to explain this difference is that we never use polling like the original Qt does and only use interrupts in our channel implementation. The overhead due to the frequent use of interrupts will be quite significant. 
+Figure \ref{fig:benchmarks} shows that our implementation loses to Qt performance-wise under no load. One speculation that we made to explain this difference is that we never use polling like the original Qt does and only use interrupts in our channel implementation. The overhead due to the frequent use of interrupts will be quite significant. 
 
 With load running in the background the performance of our implementation almost does not change as promised by our guarantees, while the original implementation of Qt performs a lot worse. Finding out the work done by the background thread is outside the scope of this paper since what we are promising is that the GUI applications are able to run smoothly and not how much work is loss by the background threads. We expect the work done to be much lower in our case though, since we reserve a subset of our cores for our system services and the applications. 
 
-The other measurement that we are evaluating our system on is by running a web browser, followed by SunSpider, a JavaScript benchmark. The result of this benchmark is similar as the previous one except that our implementation fares much better here.
+\begin{table}[htp]
+\caption{Textedit interactivity}
+\label{tab:textedit_table}
+\centering
+\begin{tabular}{|l | l | l | l |}
+\hline
+	&Latency ($\mu$s)	&Median	&Std dev\\ \hline
+Qt, NL	&0.14	&0.13	&0.049\\
+Qt, L	&30.60	&16.67	&37.24\\
+Qt-C, NL	&0.16	&0.18	&0.033\\
+Qt-C, L	&0.26	&0.15	&0.42\\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{New Subsection}
 
