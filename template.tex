@@ -122,7 +122,10 @@ We should mention these things in this section:
 \item Signalling mechanism
 \end{enumerate}
 
-Channel is the only communication mechanism that is being used in our system. The way we implement it is based on the existing 
+Channel is the only communication mechanism that is being used in our system. We build this by re-implementing the existing non-blocking buffer~\cite{Kim:2007:EAN:1260991.1261857} on top of Linux shared memory segments. All of the channels, except the nameserver's which is going to be discussed later, is lock-free so as to minimize the overhead of lock contention as much as possible and thereby increasing the throughput.
+
+This communication mechanism is point-to-point too. The way one entity inform the other that data has been to their side is by the UNIX signalling mechanism. For simplicity purpose, the entity neither do any combination of polling and interrupt nor polling mechanism although that will certainly add a considerable amount of overhead in the system.
+
 
 \subsection{Nameserver} % This is could really be a subsubsection of channels
 The nameserver functions similarly to a DNS server for channel IPC. It allows services to register themselves under an ASCII string {\tt name}, which can then be used in other applications and services. When a subsequent request is placed for this {\tt name}, the nameserver initializes a new channel and sends the shared memory ID to both processes. Further communication between the server and client happen without further nameserver intervention.
@@ -137,8 +140,22 @@ There is a slight chicken and egg problem here, since an application needs to al
 \item Decomposition
 \end{enumerate}
 
+Since this project is largely motivated by Tesselation OS~\cite{liu09tessellation, tessellation-hotpar10}, we would like to be able to port our design to the code base of Tesselation. It will be easier to do so with Qt Embedded since the it is not as complicated and large as, say, X/X11 stack. Not only that, it will also be harder to promise the resource guarantees if the GUI service has a number of layers embedded within.
+
+Fortunately for us, Qt's client/server model is decomposed in a way similar to Tesselation's and also, its code is very modularized. Hence, it's less harder in our part to find out which part of Qt that we should modify. 
+
+What happens in the internals of Qt is that, there is already a client and server, as mentioned earlier. The default communication mechanism that is being used here is tcp socket. Whenever the client wants to display an animation, it will notify the server that it would like to to do so. After a few messages have been exchanged and agreement has been reached, the server will assign the client its entitled share of the framebuffer which the client could use it as much as it likes for displaying the animation.
+
+Additionally, when there's an I/O input (e.g. mouse or keyboard), the server will be immediately notified of it and does some processing and/or filtering before forwarding it to the appropriate client. 
+
 \subsection{Resource Allocation Daemon}
 
+The purpose of resource allocation daemon is to provide any services and clients with whatever hardware resources that they are requesting. One type of resource that all clients and services will need is CPU. This is one of the first things that the clients and the systems will have to request for.
+
+One point to note here is that the client will not request, say, a guaranteed portion of the graphic driver directly to the resource allocation daemon. It's actually the service will request a big portion of this resource. Then, the client will request its portion of this resource from the service to do whatever the client wants. 
+
+There is a huge possibility of separating the policy from the mechanism in our system. In that case, different priorities could be assigned to the clients and a client who has a higher priority will be entitled to more share of the resources. However, due to time constraints, we leave this possibility for future work
+ 
 Here's a typical figure reference.  The figure is centered at the
 top of the column.  It's scaled.  It's explicitly placed.  You'll
 have to tweak the numbers to get what you want.\\
@@ -324,10 +341,3 @@ After the bibliography you are DONE.
 \theendnotes
 
 \end{document}
-
-
-
-
-
-
-
