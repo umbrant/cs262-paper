@@ -152,31 +152,17 @@ We encountered difficulties in getting both the modified and unmodified version 
 
 \subsection{Channels}
 
-To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were substantially larger (24-200 bytes). As shown in Table \ref{tab:channel_latency}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can easily push ??? MB/s even for small 4 byte messages (Table \ref{tab:channel_tput}).
+To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were a bit larger (<200 bytes). As shown in Table \ref{tab:channel}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can still push 2.5 MB/s even for small 4 byte messages.
 
 \begin{table}[tp]
-\caption{Channel Latency}
-\label{tab:channel_latency}
+\caption{Channel Benchmarks}
 \centering
-\begin{tabular}{|l | l | l | l |}
+\label{tab:channel}
+\begin{tabular}{| l | l | l | l | l |}
 \hline
-		&Latency ($\mu$s)	&Median	&Std dev\\ \hline
-4B		&0.14	&0.13	&0.049\\
-64B		&30.60	&16.67	&37.24\\
-128B	&0.16	&0.18	&0.033\\
-512B	&0.26	&0.15	&0.42\\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[tp]
-\caption{Channel Throughput (MB/s)}
-\centering
-\label{tab:channel_tput}
-\begin{tabular}{|l | l | l | l | l |}
-\hline
-			&4B 	& 64B	& 128B	& 512B \\ \hline
-Throughput	&0.26	&0.15	&0.42	& 0.42 \\
+						&4B 	& 32B	&512B	&1024B\\ \hline
+Throughput (MB/s)		&2.5	&20.1	&280.0	&583.5\\
+Latency ($\mu$s/msg)	&1.53	&1.52	&1.74	&1.67\\
 \hline
 \end{tabular}
 \end{table}
@@ -192,19 +178,9 @@ However, the tables are turned in the loaded situation. Our version of Qt mainta
 
 \subsection{Textedit}
 
-The second application we chose was a basic rich text editor, also included as one of the demo applications with the Qt source code. While browser functionality can be considered a superset of a text editor, we feel that users are less tolerance of jitter and latency in a text editor than a browser because of the expectation of immediate feedback on the screen. 
+The second application we chose was a basic rich text editor, also included as one of the demo applications with the Qt source code. Compared to a browser, a text editor is a relatively simple application, but we feel it is a better test of interactive behavior. Users are likely to be less tolerant of jitter and latency in a text editor because of the expectation of immediate feedback on the screen. 
 
 To this end, we instrumented both Qt and Qt-C to measure the time it took an event entering the server to be received and then handled by the client. Keyboard and mouse events were fed to the textedit that were representative of normal usage. As illustrated in Figure \ref{fig:benchmarks} and Table \ref{tab:textedit_table}, Qt-C performs far better than Qt in terms of latency and variance in latency, with unmodified Qt performing highly erratically under load. This aligns with our own anecdotal experiences using both versions under load; with normal Qt, there is a noticeable delay in words appearing on screen, while the effect on the Qt-C version is imperceptible.
-
-%Figure \ref{fig:benchmarks} shows that our implementation loses to Qt performance-wise under no load. One speculation that we made to explain this difference is that we never use polling like the original Qt does and only use interrupts in our channel implementation. The overhead due to the frequent use of interrupts will be quite significant. 
-
-\subsection{Further concerns}
-
-In this section, we wish to address a number of concerns that either fall outside of scope or remain unanswered by our analysis.
-
-\textbf{Batch processing throughput} The coarseness of the CPUSET mechanism means that the only way to give a strong resource guarantee to a process is to allocate at the level of entire cores. This clearly will have a strong effect on the throughput of background batch processing jobs (simulated in our case by load generating threads), since they are unable to use the cores allocated to GUI related processes. This effect was exacerbated by the low core count of our test machine; of its four cores, three were allocated to the server, client, and resource allocation daemon, leaving just one for all remaining system processes and thus one fourth the throughput. However, this is not nearly as dire as it may seem; better timesharing of resources and increasing core counts will reduce the relative loss in performance.
-
-%With load running in the background the performance of our implementation almost does not change as promised by our guarantees, while the original implementation of Qt performs a lot worse. Finding out the work done by the background thread is outside the scope of this paper since what we are promising is that the GUI applications are able to run smoothly and not how much work is loss by the background threads. We expect the work done to be much lower in our case though, since we reserve a subset of our cores for our system services and the applications. 
 
 \begin{table}[htp]
 \caption{Textedit interactivity}
@@ -220,6 +196,14 @@ Qt-C, L	&0.26	&0.15	&0.42\\
 \hline
 \end{tabular}
 \end{table}
+
+\subsection{Further concerns}
+
+In this section, we wish to address a number of concerns that either fall outside of scope or remain unanswered by our analysis.
+
+\textbf{Batch processing throughput} The coarseness of the CPUSET mechanism means that the only way to give a strong resource guarantee to a process is to allocate at the level of entire cores. This clearly will have a strong effect on the throughput of background batch processing jobs (simulated in our case by load generating threads), since they are unable to use the cores allocated to GUI related processes. This effect was exacerbated by the low core count of our test machine; of its four cores, three were allocated to the server, client, and resource allocation daemon, leaving just one out of four for all remaining system processes and thus one fourth the throughput in our background jobs. However, this is not nearly as dire as it may seem; better timesharing of resources and increasing core counts will reduce the relative loss in performance.
+
+\textbf{RA with unmodified Qt} Given that unmodified Qt also has the same server/client model, it is possible to combine it with the resource allocation daemon to get the same resource guarantees. We expect that this combination would actually be more efficient than our pairing, since socket communication is comparatively more efficient than our interrupt heavy channel implementation). However, this is somewhat orthogonal to the ultimate goal of porting to Tessellation. Tessellation provides a number of facilities that will greatly improve efficiency, such as lightweight user level signals, finer grained resource scheduling policies, and more explicit control over communication. We plan on further exploring this tradeoff between background and foreground tasks once the porting effort is complete.
 
 \section{Future Work}
 
@@ -239,7 +223,7 @@ In this paper, we have presented a proof that the research direction, i.e. cores
 
 \section{Availability}
 
-Our system is available open source under an LGPL license at~{\tt http://www.github.com/~azuriel}
+Our system is available open source under an LGPL license at~\url{http://www.github.com/~azuriel/Qt-channels}
 
 \footnotesize{\bibliographystyle{acm}
 \bibliography{bibliography}}
