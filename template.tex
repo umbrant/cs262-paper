@@ -184,9 +184,11 @@ Throughput	&0.26	&0.15	&0.42	& 0.42 \\
 
 \subsection{Web Browser}
 
-The first user application we chose for testing was a simple Qt web browser based on WebKit. Browsers are probably one of the most commonly used and installed user applications, making a browser a representative choice as a "real world" application. Browsers also have the benefit of having numerous benchmark and test suites, such as SunSpider~\cite{sunspider}, Kraken~\cite{kraken}, and V8~\cite{v8benchmark}.
+The first user application we chose for testing was a simple Qt web browser based on WebKit. Browsers are probably one of the most commonly used and installed user applications, making a browser a representative choice as a "real world" application. Browsers also have the benefit of a wide variety of Javascript benchmark suites, such as SunSpider~\cite{sunspider}, Kraken~\cite{kraken}, and V8~\cite{v8benchmark}.
 
-of the two applications chosen for testing was a simple web browser based on the WebKit browser engine. 
+We chose to use Apple's SunSpider JS benchmark, which is mostly CPU-bound. Figure \ref{fig:benchmarks} shows the time to complete SunSpider, lower being better. In the no load case, the unmodified version of Qt performs roughly three times faster than our version. This is somewhat disappointing; our current guess is that signal handling within the channels is triggering a large number of context switches.
+
+However, the tables are turned in the loaded situation. Our version of Qt maintained roughly equivalent performance, while the unmodified version's performance degraded by more than a factor of 20 (and 7 times worse than our version). This is due to the performance isolation guaranteed by CPUSETs and the resource allocation daemon; Qt-C is guaranteed its allocation of the CPU even under load, while Qt has to share the CPU with other tasks and experiences additional scheduling and context switching overhead.
 
 \subsection{Textedit}
 
