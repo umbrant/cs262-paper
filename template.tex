@@ -30,6 +30,7 @@
 \usepackage{multirow}
 \usepackage{hhline}
 \usepackage{ifthen}
+\usepackage{url}
 \begin{document}
 
 %don't want date printed
@@ -86,31 +87,6 @@ Things that should be mentioned here:
 Some embedded literal typset code might 
 look like the following :
 
-{\tt \small
-\begin{verbatim}
-int wrap_fact(ClientData clientData,
-              Tcl_Interp *interp,
-              int argc, char *argv[]) {
-    int result;
-    int arg0;
-    if (argc != 2) {
-        interp->result = "wrong # args";
-        return TCL_ERROR;
-    }
-    arg0 = atoi(argv[1]);
-    result = fact(arg0);
-    sprintf(interp->result,"%d",result);
-    return TCL_OK;
-}
-\end{verbatim}
-}
-
-Now we're going to cite somebody.  Watch for the cite tag.
-Here it comes~\cite{Chaum1981,Diffie1976}.  The tilde character (\~{})
-in the source means a non-breaking space.  This way, your reference will
-always be attached to the word that preceded it, instead of going to the
-next line.
-
 \section{Implementation}
 \subsection{Channels}
 We should mention these things in this section:
@@ -127,7 +103,7 @@ Channel is the only communication mechanism that is being used in our system. We
 This communication mechanism is point-to-point too. The way one entity inform the other that data has been to their side is by the UNIX signalling mechanism. For simplicity purpose, the entity neither do any combination of polling and interrupt nor polling mechanism although that will certainly add a considerable amount of overhead in the system.
 
 
-\subsection{Nameserver} % This is could really be a subsubsection of channels
+\subsection{Nameserver}
 The nameserver functions similarly to a DNS server for channel IPC. It allows services to register themselves under an ASCII string {\tt name}, which can then be used in other applications and services. When a subsequent request is placed for this {\tt name}, the nameserver initializes a new channel and sends the shared memory ID to both processes. Further communication between the server and client happen without further nameserver intervention.
 
 There is a slight chicken and egg problem here, since an application needs to already have a channel open to the nameserver before it can request channels to be opened. This is handled by reserving a globally known channel purely for this initialization step; applications will get a lock, inform the nameserver of its presence, wait for the nameserver to allocate a new channel for the two of them, and then unlock and continue communication on the new channel. Since this initialization channel is only used once by each process, there is little lock contention.
@@ -155,16 +131,6 @@ The purpose of resource allocation daemon is to provide any services and clients
 One point to note here is that the client will not request, say, a guaranteed portion of the graphic driver directly to the resource allocation daemon. It's actually the service will request a big portion of this resource. Then, the client will request its portion of this resource from the service to do whatever the client wants. 
 
 There is a huge possibility of separating the policy from the mechanism in our system. In that case, different priorities could be assigned to the clients and a client who has a higher priority will be entitled to more share of the resources. However, due to time constraints, we leave this possibility for future work
- 
-Here's a typical figure reference.  The figure is centered at the
-top of the column.  It's scaled.  It's explicitly placed.  You'll
-have to tweak the numbers to get what you want.\\
-
-
-
-This text came after the figure, so we'll casually refer to Figure 1
-as we go on our merry way.
-
 
 \section{Evaluation}
 
@@ -174,17 +140,17 @@ as we go on our merry way.
     \subfigure[Sunspider JS benchmark]{\label{fig:edge-a}\includegraphics[scale=0.75]{sunspider.ps}}
     \subfigure[Textedit latency measurements]{\label{fig:edge-b}\includegraphics[scale=0.75]{textedit.ps}} \\
   \end{center}
-  \label{fig:benchmarks}
   \caption{Comparison between unmodified and channels-based versions of Qt}
+  \label{fig:benchmarks}
 \end{figure*}
 
-\subsubsection{Test setup}
+\subsection{Test setup}
 
 The test harness used was a commodity desktop PC with a quad core Intel i7-870 processor clocked at 2.93 GHz and 4GB of RAM. Hyperthreading, Turbo Boost, and power saving states were all disabled to normalize the performance of the CPU cores. Loaded conditions were simulated by running 128 CPU-bound background threads. This number is somewhat arbitrary, but a lower or higher number of threads would likely result in a proportional change without effecting the meaning of our results.
 
 We encountered difficulties in getting both the modified and unmodified version of Qt to run correctly on an actual framebuffer. As a substitute, all tests were run on the Qt Embedded virtual framebuffer, an X11 application. This means there are additional layers of software, such as X11 and the WM, that interpose between user input and the I/O server. However, our timings are done above these layers, and we believe that this favors neither the unmodified nor channels-based version of Qt.
 
-\subsubsection{Channels}
+\subsection{Channels}
 
 To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were substantially larger (24-200 bytes). As shown in Table \ref{tab:channel_latency}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can easily push ??? MB/s even for small 4 byte messages (Table \ref{tab:channel_tput}).
 
@@ -216,17 +182,29 @@ Throughput	&0.26	&0.15	&0.42	& 0.42 \\
 \end{table}
 
 
-\subsubsection{Browser}
+\subsection{Web Browser}
 
-The other measurement that we are evaluating our system on is by running a web browser, followed by SunSpider, a JavaScript benchmark. The result of this benchmark is similar as the previous one except that our implementation fares much better here.
+The first user application we chose for testing was a simple Qt web browser based on WebKit. Browsers are probably one of the most commonly used and installed user applications, making a browser a representative choice as a "real world" application. Browsers also have the benefit of a wide variety of Javascript benchmark suites, such as SunSpider~\cite{sunspider}, Kraken~\cite{kraken}, and V8~\cite{v8benchmark}.
 
-\subsubsection{Textedit}
+We chose to use Apple's SunSpider JS benchmark, which is mostly CPU-bound. Figure \ref{fig:benchmarks} shows the time to complete SunSpider, lower being better. In the no load case, the unmodified version of Qt performs roughly three times faster than our version. This is somewhat disappointing; our current guess is that signal handling within the channels is triggering a large number of context switches.
 
-To illustrate interactivity in our experiments, we use Qt sample textedit program and one of us will mash the keyboard and mouse for a couple of minutes and the latency between when the keyboard is pressed until when the change is reflected in the screen is measured. We also ensure that the events (i.e. keyboard or mouse pressed event) that are received in the server are all forwarded to the clients. Thus, our implementation is very reliable since it doesn't drop any of the registered events. 
+However, the tables are turned in the loaded situation. Our version of Qt maintained roughly equivalent performance, while the unmodified version's performance degraded by more than a factor of 20 (and 7 times worse than our version). This is due to the performance isolation guaranteed by CPUSETs and the resource allocation daemon; Qt-C is guaranteed its allocation of the CPU even under load, while Qt has to share the CPU with other tasks and experiences additional scheduling and context switching overhead.
 
-Figure \ref{fig:benchmarks} shows that our implementation loses to Qt performance-wise under no load. One speculation that we made to explain this difference is that we never use polling like the original Qt does and only use interrupts in our channel implementation. The overhead due to the frequent use of interrupts will be quite significant. 
+\subsection{Textedit}
 
-With load running in the background the performance of our implementation almost does not change as promised by our guarantees, while the original implementation of Qt performs a lot worse. Finding out the work done by the background thread is outside the scope of this paper since what we are promising is that the GUI applications are able to run smoothly and not how much work is loss by the background threads. We expect the work done to be much lower in our case though, since we reserve a subset of our cores for our system services and the applications. 
+The second application we chose was a basic rich text editor, also included as one of the demo applications with the Qt source code. While browser functionality can be considered a superset of a text editor, we feel that users are less tolerance of jitter and latency in a text editor than a browser because of the expectation of immediate feedback on the screen. 
+
+To this end, we instrumented both Qt and Qt-C to measure the time it took an event entering the server to be received and then handled by the client. Keyboard and mouse events were fed to the textedit that were representative of normal usage. As illustrated in Figure \ref{fig:benchmarks} and Table \ref{tab:textedit_table}, Qt-C performs far better than Qt in terms of latency and variance in latency, with unmodified Qt performing highly erratically under load. This aligns with our own anecdotal experiences using both versions under load; with normal Qt, there is a noticeable delay in words appearing on screen, while the effect on the Qt-C version is imperceptible.
+
+%Figure \ref{fig:benchmarks} shows that our implementation loses to Qt performance-wise under no load. One speculation that we made to explain this difference is that we never use polling like the original Qt does and only use interrupts in our channel implementation. The overhead due to the frequent use of interrupts will be quite significant. 
+
+\subsection{Further concerns}
+
+In this section, we wish to address a number of concerns that either fall outside of scope or remain unanswered by our analysis.
+
+\textbf{Batch processing throughput} The coarseness of the CPUSET mechanism means that the only way to give a strong resource guarantee to a process is to allocate at the level of entire cores. This clearly will have a strong effect on the throughput of background batch processing jobs (simulated in our case by load generating threads), since they are unable to use the cores allocated to GUI related processes. This effect was exacerbated by the low core count of our test machine; of its four cores, three were allocated to the server, client, and resource allocation daemon, leaving just one for all remaining system processes and thus one fourth the throughput. However, this is not nearly as dire as it may seem; better timesharing of resources and increasing core counts will reduce the relative loss in performance.
+
+%With load running in the background the performance of our implementation almost does not change as promised by our guarantees, while the original implementation of Qt performs a lot worse. Finding out the work done by the background thread is outside the scope of this paper since what we are promising is that the GUI applications are able to run smoothly and not how much work is loss by the background threads. We expect the work done to be much lower in our case though, since we reserve a subset of our cores for our system services and the applications. 
 
 \begin{table}[htp]
 \caption{Textedit interactivity}
@@ -243,101 +221,25 @@ Qt-C, L	&0.26	&0.15	&0.42\\
 \end{tabular}
 \end{table}
 
-\subsection{New Subsection}
+\section{Future Work}
 
-It can get tricky typesetting Tcl and C code in LaTeX because they share
-a lot of mystical feelings about certain magic characters.  You
-will have to do a lot of escaping to typeset curly braces and percent
-signs, for example, like this:
-``The {\tt \%module} directive
-sets the name of the initialization function.  This is optional, but is
-recommended if building a Tcl 7.5 module.
-Everything inside the {\tt \%\{, \%\}}
-block is copied directly into the output. allowing the inclusion of
-header files and additional C code." \\
-
-Sometimes you want to really call attention to a piece of text.  You
-can center it in the column like this:
-\begin{center}
-{\tt \_1008e614\_Vector\_p}
-\end{center}
-and people will really notice it.\\
-
-\noindent
-The noindent at the start of this paragraph makes it clear that it's
-a continuation of the preceding text, not a new para in its own right.
-
-
-Now this is an ingenious way to get a forced space.
-{\tt Real~$*$} and {\tt double~$*$} are equivalent. 
-
-Now here is another way to call attention to a line of code, but instead
-of centering it, we noindent and bold it.\\
-
-\noindent
-{\bf \tt size\_t : fread ptr size nobj stream } \\
-
-And here we have made an indented para like a definition tag (dt)
-in HTML.  You don't need a surrounding list macro pair.
-\begin{itemize}
-\item[]  {\tt fread} reads from {\tt stream} into the array {\tt ptr} at
-most {\tt nobj} objects of size {\tt size}.   {\tt fread} returns
-the number of objects read. 
-\end{itemize}
-This concludes the definitions tag.
-
-\subsection{How to Build Your Paper}
-
-You have to run {\tt latex} once to prepare your references for
-munging.  Then run {\tt bibtex} to build your bibliography metadata.
-Then run {\tt latex} twice to ensure all references have been resolved.
-If your source file is called {\tt usenixTemplate.tex} and your {\tt
-  bibtex} file is called {\tt usenixTemplate.bib}, here's what you do:
-{\tt \small
-\begin{verbatim}
-latex usenixTemplate
-bibtex usenixTemplate
-latex usenixTemplate
-latex usenixTemplate
-\end{verbatim}
-}
-
-
-\subsection{Experience and Future Work}
 There are many ideas for future work that we hope to explore. First and foremost would be to port our existing work to Tessellation OS. This involves some components of the system to be tweaked to behave a little differently. For example, channel will be integrated to the base kernel functionality to provide a higher throughput and nameserver will be one of the system services that needs to start at boot time. Also, since Tessellation OS has a different signalling mechanism 
 
-Another possible idea for future work is that we could improve the performance of each components of our system. An example of this will be to enable our channel to use interrupt "rate-limiting" instead of interrupts only mechanism so as to minimize the overhead.
+Although we manage to support a number of essential applications such as text-edit and a web browser, being able to support more applications will be nice. There is a plethora of applications out there that require real-time support including music/video player and drawing application and the success of this will definitely convince us further that cores partitioning is the winning solution in the era of many-cores.
 
-Designing a composable SLAs will also add a great functionality to our system. In this case, each client will be able to discuss with any service on how many resources it could get. If a particular service is currently under-load, the client might be able to get more portion of the resource 
+Another possible idea for future work is that we could improve the performance of each components of our system. An example of this will be to enable our channel to use interrupt "rate-limiting" instead of interrupts only mechanism to minimize the overhead since we notice that Qt sends data in batches of mostly tens of bytes. One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the servers, we are pretty sure that they are not parallelized thoroughly yet. 
 
-\subsection{Conclusion}
+In order to improve the performance further, we should decompose a more complicated client applications to be served by more number of services. Take the browser as an example. The browser could have its html parser as one service and the lexer as one service. Even more, we could distinguish the service that handles html display from the service that handles flash display.
 
-\section{Acknowledgments}
+Designing a composable SLAs will also add a great functionality to our system. In this circumstance, each client will be able to discuss with any service on how many resources it could get. More policies could be designed too. For instance, if a particular service is currently under-load, the client might be able to get more portion of the resource and that, if a relatively prioritized client just comes in, we might need to take away some "extra" portion of the resources from the other clients.
 
-A polite author always includes acknowledgments.  Thank everyone,
-especially those who funded the work. 
+\section{Conclusion}
+
+In this paper, we have presented a proof that the research direction, i.e. cores partitioning, of Tessellation OS is one candidate for the winning solution in the era of many-cores. We have demonstrated a satisfying performance on intricate, real-world applications. Whether we will need a new operating system or not to preserve the interactivity of applications will be another unanswered question in our paper. This might be solved if we are able to successfully port our system to Tessellation and does experiments with it.
 
 \section{Availability}
 
-It's great when this section says that MyWonderfulApp is free software, 
-available via anonymous FTP from
-
-\begin{center}
-{\tt ftp.site.dom/pub/myname/Wonderful}\\
-\end{center}
-
-Also, it's even greater when you can write that information is also 
-available on the Wonderful homepage at 
-
-\begin{center}
-{\tt http://www.site.dom/\~{}myname/SWIG}
-\end{center}
-
-Now we get serious and fill in those references.  Remember you will
-have to run latex twice on the document in order to resolve those
-cite tags you met earlier.  This is where they get resolved.
-We've preserved some real ones in addition to the template-speak.
-After the bibliography you are DONE.
+Our system is available open source under an LGPL license at~{\tt http://www.github.com/~azuriel}
 
 \footnotesize{\bibliographystyle{acm}
 \bibliography{bibliography}}
