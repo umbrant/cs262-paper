@@ -192,11 +192,19 @@ However, the tables are turned in the loaded situation. Our version of Qt mainta
 
 \subsection{Textedit}
 
-To illustrate interactivity in our experiments, we use Qt sample textedit program and one of us will mash the keyboard and mouse for a couple of minutes and the latency between when the keyboard is pressed until when the change is reflected in the screen is measured. We also ensure that the events (i.e. keyboard or mouse pressed event) that are received in the server are all forwarded to the clients. Thus, our implementation is very reliable since it doesn't drop any of the registered events. 
+The second application we chose was a basic rich text editor, also included as one of the demo applications with the Qt source code. While browser functionality can be considered a superset of a text editor, we feel that users are less tolerance of jitter and latency in a text editor than a browser because of the expectation of immediate feedback on the screen. 
 
-Figure \ref{fig:benchmarks} shows that our implementation loses to Qt performance-wise under no load. One speculation that we made to explain this difference is that we never use polling like the original Qt does and only use interrupts in our channel implementation. The overhead due to the frequent use of interrupts will be quite significant. 
+To this end, we instrumented both Qt and Qt-C to measure the time it took an event entering the server to be received and then handled by the client. Keyboard and mouse events were fed to the textedit that were representative of normal usage. As illustrated in Figure \ref{fig:benchmarks} and Table \ref{tab:textedit_table}, Qt-C performs far better than Qt in terms of latency and variance in latency, with unmodified Qt performing highly erratically under load. This aligns with our own anecdotal experiences using both versions under load; with normal Qt, there is a noticeable delay in words appearing on screen, while the effect on the Qt-C version is imperceptible.
 
-With load running in the background the performance of our implementation almost does not change as promised by our guarantees, while the original implementation of Qt performs a lot worse. Finding out the work done by the background thread is outside the scope of this paper since what we are promising is that the GUI applications are able to run smoothly and not how much work is loss by the background threads. We expect the work done to be much lower in our case though, since we reserve a subset of our cores for our system services and the applications. 
+%Figure \ref{fig:benchmarks} shows that our implementation loses to Qt performance-wise under no load. One speculation that we made to explain this difference is that we never use polling like the original Qt does and only use interrupts in our channel implementation. The overhead due to the frequent use of interrupts will be quite significant. 
+
+\subsection{Further concerns}
+
+In this section, we wish to address a number of concerns that either fall outside of scope or remain unanswered by our analysis.
+
+\textbf{Batch processing throughput} The coarseness of the CPUSET mechanism means that the only way to give a strong resource guarantee to a process is to allocate at the level of entire cores. This clearly will have a strong effect on the throughput of background batch processing jobs (simulated in our case by load generating threads), since they are unable to use the cores allocated to GUI related processes. This effect was exacerbated by the low core count of our test machine; of its four cores, three were allocated to the server, client, and resource allocation daemon, leaving just one for all remaining system processes and thus one fourth the throughput. However, this is not nearly as dire as it may seem; better timesharing of resources and increasing core counts will reduce the relative loss in performance.
+
+%With load running in the background the performance of our implementation almost does not change as promised by our guarantees, while the original implementation of Qt performs a lot worse. Finding out the work done by the background thread is outside the scope of this paper since what we are promising is that the GUI applications are able to run smoothly and not how much work is loss by the background threads. We expect the work done to be much lower in our case though, since we reserve a subset of our cores for our system services and the applications. 
 
 \begin{table}[htp]
 \caption{Textedit interactivity}
@@ -217,6 +225,14 @@ Qt-C, L	&0.26	&0.15	&0.42\\
 
 A polite author always includes acknowledgments.  Thank everyone,
 especially those who funded the work. 
+
+\section{Future Work}
+Porting
+Load shedding
+SLAs
+Further decomp, more apps
+More services
+Server and resource allocation policies
 
 \section{Availability}
 
