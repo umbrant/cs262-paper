@@ -167,9 +167,43 @@ The test harness used was a commodity desktop PC with a quad core Intel i7-870 p
 
 We encountered difficulties in getting both the modified and unmodified version of Qt to run correctly on an actual framebuffer. As a substitute, all tests were run on the Qt Embedded virtual framebuffer, an X11 application. This means there are additional layers of software, such as X11 and the WM, that interpose between user input and the I/O server. However, our timings are done above these layers, and we believe that this favors neither the unmodified nor channels-based version of Qt.
 
-\subsection{}
+\subsubsection{Channels}
 
-Table \ref{tab:nbb_table} summarizes the latency of using our implementation of channels with varying message sizes. As we can see, the latency of sending a message from one point to another is very low.
+To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were substantially larger (24-200 bytes). As shown in Table \ref{tab:channel_latency}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can easily push ??? MB/s even for small 4 byte messages (Table \ref{tab:channel_tput}).
+
+\begin{table}[tp]
+\caption{Channel Latency}
+\label{tab:channel_latency}
+\centering
+\begin{tabular}{|l | l | l | l |}
+\hline
+		&Latency ($\mu$s)	&Median	&Std dev\\ \hline
+4B		&0.14	&0.13	&0.049\\
+64B		&30.60	&16.67	&37.24\\
+128B	&0.16	&0.18	&0.033\\
+512B	&0.26	&0.15	&0.42\\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[tp]
+\caption{Channel Throughput (MB/s)}
+\centering
+\label{tab:channel_tput}
+\begin{tabular}{|l | l | l | l | l |}
+\hline
+			&4B 	& 64B	& 128B	& 512B \\ \hline
+Throughput	&0.26	&0.15	&0.42	& 0.42 \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\subsubsection{Browser}
+
+The other measurement that we are evaluating our system on is by running a web browser, followed by SunSpider, a JavaScript benchmark. The result of this benchmark is similar as the previous one except that our implementation fares much better here.
+
+\subsubsection{Textedit}
 
 To illustrate interactivity in our experiments, we use Qt sample textedit program and one of us will mash the keyboard and mouse for a couple of minutes and the latency between when the keyboard is pressed until when the change is reflected in the screen is measured. We also ensure that the events (i.e. keyboard or mouse pressed event) that are received in the server are all forwarded to the clients. Thus, our implementation is very reliable since it doesn't drop any of the registered events. 
 
@@ -177,11 +211,10 @@ Figure \ref{fig:benchmarks} shows that our implementation loses to Qt performanc
 
 With load running in the background the performance of our implementation almost does not change as promised by our guarantees, while the original implementation of Qt performs a lot worse. Finding out the work done by the background thread is outside the scope of this paper since what we are promising is that the GUI applications are able to run smoothly and not how much work is loss by the background threads. We expect the work done to be much lower in our case though, since we reserve a subset of our cores for our system services and the applications. 
 
-The other measurement that we are evaluating our system on is by running a web browser, followed by SunSpider, a JavaScript benchmark. The result of this benchmark is similar as the previous one except that our implementation fares much better here.
-
 \begin{table}[htp]
 \caption{Textedit interactivity}
 \label{tab:textedit_table}
+\centering
 \begin{tabular}{|l | l | l | l |}
 \hline
 	&Latency ($\mu$s)	&Median	&Std dev\\ \hline
