@@ -23,6 +23,13 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix,epsfig,endnotes}
 \usepackage{subfigure}
+\usepackage{color}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{calc}
+\usepackage{multirow}
+\usepackage{hhline}
+\usepackage{ifthen}
 \begin{document}
 
 %don't want date printed
@@ -136,6 +143,14 @@ Here's a typical figure reference.  The figure is centered at the
 top of the column.  It's scaled.  It's explicitly placed.  You'll
 have to tweak the numbers to get what you want.\\
 
+
+
+This text came after the figure, so we'll casually refer to Figure 1
+as we go on our merry way.
+
+
+\section{Evaluation}
+
 % you can also use the wonderful epsfig package...
 \begin{figure*}[t]
   \begin{center}
@@ -145,11 +160,19 @@ have to tweak the numbers to get what you want.\\
   \label{fig:benchmarks}
 \end{figure*}
 
-
-This text came after the figure, so we'll casually refer to Figure 1
-as we go on our merry way.
-
-\section{Evaluation}
+\begin{table}[htp]
+\caption{Textedit interactivity}
+\label{textedit_table}
+\begin{tabular}{|l | l | l | l |}
+\hline
+	&Latency ($\mu$s)	&Median	&Std dev\\ \hline
+Qt, NL	&0.14	&0.13	&0.049\\
+Qt, L	&30.60	&16.67	&37.24\\
+Qt-C, NL	&0.16	&0.18	&0.033\\
+Qt-C, L	&0.26	&0.15	&0.42\\
+\hline
+\end{tabular}
+\end{table}
 
 In this section, we examine how does our system perform on guaranteeing the promised resources even under tremendous load. Our experiments is run with Intel i7-880 2.93-GHz quad-core processors and inside the Qt virtual framebuffer. Load is simulated in our system by running 128 cpu-bound threads that runs an infinite loop.
 
