@@ -109,20 +109,13 @@ The nameserver functions similarly to a DNS server for channel IPC. It allows se
 There is a slight chicken and egg problem here, since an application needs to already have a channel open to the nameserver before it can request channels to be opened. This is handled by reserving a globally known channel purely for this initialization step; applications will get a lock, inform the nameserver of its presence, wait for the nameserver to allocate a new channel for the two of them, and then unlock and continue communication on the new channel. Since this initialization channel is only used once by each process, there is little lock contention.
 
 \subsection{Qt Embedded}
-\begin{enumerate}
-\item Framebuffer
-\item Porting to tessellation
-\item Client/server model
-\item Decomposition
-\end{enumerate}
 
-Since this project is largely motivated by Tessellation OS~\cite{liu09tessellation, tessellation-hotpar10}, we would like to be able to port our design to the code base of Tessellation. It will be easier to do so with Qt Embedded since the it is not as complicated and large as, say, X/X11 stack. Not only that, it will also be harder to promise the resource guarantees if the GUI service has a number of layers embedded within.
+The primary reason we chose to modify Qt Embedded was because of its advertised ease of porting to other platforms. Qt Embedded already provides support for Embedded Linux, Windows Mobile, Symbian, and MeeGo, and has minimal architecture and OS requirements for further porting efforts to Tessellation OS~\cite{qtembedded}.
+ Qt Embedded runs directly on a framebuffer with the provided software renderer, removing the need for writing a real graphics driver or also porting the X stack and a window manager. This ease of porting has been leveraged in at least one other operating system research project we are aware of~\cite{ibos}. 
 
-Fortunately for us, Qt's client/server model is decomposed in a way similar to Tessellation's and also, its code is very modularized. Hence, it's less harder in our part to find out which part of Qt that we should modify. 
+Qt Embedded is structured as a service/client model that separates the responsibilities of receiving and handling user interaction, as well as the responsibilities of rendering and drawing to the screen. The I/O service initially receives all mouse and keyboard events and forwards them to the correct client application. The application then processes the event and renders any changes to a shared memory region. The service is then responsible for using the graphics driver to copy the rendered image to the screen. This division of responsibilities made Qt Embedded a natural target for our project.
 
-What happens in the internals of Qt is that, there is already a client and server, as mentioned earlier. The default communication mechanism that is being used here is tcp socket. Whenever the client wants to display an animation, it will notify the server that it would like to to do so. After a few messages have been exchanged and agreement has been reached, the server will assign the client its entitled share of the framebuffer which the client could use it as much as it likes for displaying the animation.
-
-Additionally, when there's an I/O input (e.g. mouse or keyboard), the server will be immediately notified of it and does some processing and/or filtering before forwarding it to the appropriate client. 
+Keyboard and mouse events are by default passed from the I/O service to the client application over a local TCP socket. This presented a clean interface for substituting in channel-based communication; we ended up implementing Qt's QAbstractSocket API without major changes to the I/O service or client, indicating that this style of socket communication might fit within the point-to-point channel paradigm.
 
 \subsection{Resource Allocation Daemon}
 
@@ -148,7 +141,7 @@ There is a huge possibility of separating the policy from the mechanism in our s
 
 The test harness used was a commodity desktop PC with a quad core Intel i7-870 processor clocked at 2.93 GHz and 4GB of RAM. Hyperthreading, Turbo Boost, and power saving states were all disabled to normalize the performance of the CPU cores. Loaded conditions were simulated by running 128 CPU-bound background threads. This number is somewhat arbitrary, but a lower or higher number of threads would likely result in a proportional change without effecting the meaning of our results.
 
-We encountered difficulties in getting both the modified and unmodified version of Qt to run correctly on an actual framebuffer. As a substitute, all tests were run on the Qt Embedded virtual framebuffer, an X11 application. This means there are additional layers of software, such as X11 and the WM, that interpose between user input and the I/O server. However, our timings are done above these layers, and we believe that this favors neither the unmodified nor channels-based version of Qt.
+We encountered difficulties in getting both the modified and unmodified version of Qt to run correctly on an actual framebuffer. As a substitute, all tests were run on the Qt Embedded virtual framebuffer, an X11 application. This means there are additional layers of software, such as X11 and the WM, that interpose between user input and the I/O service. However, our timings are done above these layers, and we believe that this favors neither the unmodified nor channels-based version of Qt.
 
 \subsection{Channels}
 
@@ -180,7 +173,7 @@ However, the tables are turned in the loaded situation. Our version of Qt mainta
 
 The second application we chose was a basic rich text editor, also included as one of the demo applications with the Qt source code. Compared to a browser, a text editor is a relatively simple application, but we feel it is a better test of interactive behavior. Users are likely to be less tolerant of jitter and latency in a text editor because of the expectation of immediate feedback on the screen. 
 
-To this end, we instrumented both Qt and Qt-C to measure the time it took an event entering the server to be received and then handled by the client. Keyboard and mouse events were fed to the textedit that were representative of normal usage. As illustrated in Figure \ref{fig:benchmarks} and Table \ref{tab:textedit_table}, Qt-C performs far better than Qt in terms of latency and variance in latency, with unmodified Qt performing highly erratically under load. This aligns with our own anecdotal experiences using both versions under load; with normal Qt, there is a noticeable delay in words appearing on screen, while the effect on the Qt-C version is imperceptible.
+To this end, we instrumented both Qt and Qt-C to measure the time it took an event entering the service to be received and then handled by the client. Keyboard and mouse events were fed to the textedit that were representative of normal usage. As illustrated in Figure \ref{fig:benchmarks} and Table \ref{tab:textedit_table}, Qt-C performs far better than Qt in terms of latency and variance in latency, with unmodified Qt performing highly erratically under load. This aligns with our own anecdotal experiences using both versions under load; with normal Qt, there is a noticeable delay in words appearing on screen, while the effect on the Qt-C version is imperceptible.
 
 \begin{table}[htp]
 \caption{Textedit interactivity}
@@ -201,17 +194,23 @@ Qt-C, L	&0.26	&0.15	&0.42\\
 
 In this section, we wish to address a number of concerns that either fall outside of scope or remain unanswered by our analysis.
 
-\textbf{Batch processing throughput} The coarseness of the CPUSET mechanism means that the only way to give a strong resource guarantee to a process is to allocate at the level of entire cores. This clearly will have a strong effect on the throughput of background batch processing jobs (simulated in our case by load generating threads), since they are unable to use the cores allocated to GUI related processes. This effect was exacerbated by the low core count of our test machine; of its four cores, three were allocated to the server, client, and resource allocation daemon, leaving just one out of four for all remaining system processes and thus one fourth the throughput in our background jobs. However, this is not nearly as dire as it may seem; better timesharing of resources and increasing core counts will reduce the relative loss in performance.
+\textbf{Batch processing throughput} The coarseness of the CPUSET mechanism means that the only way to give a strong resource guarantee to a process is to allocate at the level of entire cores. This clearly will have a strong effect on the throughput of background batch processing jobs (simulated in our case by load generating threads), since they are unable to use the cores allocated to GUI related processes. This effect was exacerbated by the low core count of our test machine; of its four cores, three were allocated to the service, client, and resource allocation daemon, leaving just one out of four for all remaining system processes and thus one fourth the throughput in our background jobs. However, this is not nearly as dire as it may seem; better timesharing of resources and increasing core counts will reduce the relative loss in performance.
 
-\textbf{RA with unmodified Qt} Given that unmodified Qt also has the same server/client model, it is possible to combine it with the resource allocation daemon to get the same resource guarantees. We expect that this combination would actually be more efficient than our pairing, since socket communication is comparatively more efficient than our interrupt heavy channel implementation). However, this is somewhat orthogonal to the ultimate goal of porting to Tessellation. Tessellation provides a number of facilities that will greatly improve efficiency, such as lightweight user level signals, finer grained resource scheduling policies, and more explicit control over communication. We plan on further exploring this tradeoff between background and foreground tasks once the porting effort is complete.
+\textbf{RA with unmodified Qt} Given that unmodified Qt also has the same service/client model, it is possible to combine it with the resource allocation daemon to get the same resource guarantees. We expect that this combination would actually be more efficient than our pairing, since socket communication is comparatively more efficient than our interrupt heavy channel implementation). However, this is somewhat orthogonal to the ultimate goal of porting to Tessellation. Tessellation provides a number of facilities that will greatly improve efficiency, such as lightweight user level signals, finer grained resource scheduling policies, and more explicit control over communication. We plan on further exploring this tradeoff between background and foreground tasks once the porting effort is complete.
 
 \section{Future Work}
+
+Policies inside of the I/O service
+
+Making the client pass rendered images to the service over channels
+
+Screen drawing / compositing / window manager service?
 
 There are many ideas for future work that we hope to explore. First and foremost would be to port our existing work to Tessellation OS. This involves some components of the system to be tweaked to behave a little differently. For example, channel will be integrated to the base kernel functionality to provide a higher throughput and nameserver will be one of the system services that needs to start at boot time. Also, since Tessellation OS has a different signalling mechanism 
 
 Although we manage to support a number of essential applications such as text-edit and a web browser, being able to support more applications will be nice. There is a plethora of applications out there that require real-time support including music/video player and drawing application and the success of this will definitely convince us further that cores partitioning is the winning solution in the era of many-cores.
 
-Another possible idea for future work is that we could improve the performance of each components of our system. An example of this will be to enable our channel to use interrupt "rate-limiting" instead of interrupts only mechanism to minimize the overhead since we notice that Qt sends data in batches of mostly tens of bytes. One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the servers, we are pretty sure that they are not parallelized thoroughly yet. 
+Another possible idea for future work is that we could improve the performance of each components of our system. An example of this will be to enable our channel to use interrupt "rate-limiting" instead of interrupts only mechanism to minimize the overhead since we notice that Qt sends data in batches of mostly tens of bytes. One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the services, we are pretty sure that they are not parallelized thoroughly yet. 
 
 In order to improve the performance further, we should decompose a more complicated client applications to be served by more number of services. Take the browser as an example. The browser could have its html parser as one service and the lexer as one service. Even more, we could distinguish the service that handles html display from the service that handles flash display.
 
