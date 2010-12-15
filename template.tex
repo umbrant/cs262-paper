@@ -114,7 +114,7 @@ We should mention these things in this section:
 \item Signalling mechanism
 \end{enumerate}
 
-We implement the channel based 
+Channel is the only communication mechanism that is being used in our system. The way we implement it is based on the existing 
 
 \subsection{Nameserver} % This is could really be a subsubsection of channels
 The nameserver functions similarly to a DNS server for channel IPC. It allows services to register themselves under an ASCII string {\tt name}, which can then be used in other applications and services. When a subsequent request is placed for this {\tt name}, the nameserver initializes a new channel and sends the shared memory ID to both processes. Further communication between the server and client happen without further nameserver intervention.
