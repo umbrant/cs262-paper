@@ -22,6 +22,7 @@
 % This version uses the latex2e styles, not the very ancient 2.09 stuff.
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix,epsfig,endnotes}
+\usepackage{subfigure}
 \begin{document}
 
 %don't want date printed
@@ -145,22 +146,14 @@ top of the column.  It's scaled.  It's explicitly placed.  You'll
 have to tweak the numbers to get what you want.\\
 
 % you can also use the wonderful epsfig package...
-\begin{figure}[t]
-\begin{center}
-\begin{picture}(300,150)(0,0)
-\put(0,0){\special{psfile = sunspider.ps hscale = 80 vscale = 80}}
-\end{picture}\\
-\end{center}
-\caption{Sunspider Javascript benchmark}
-\end{figure}
-\begin{figure}[t]
-\begin{center}
-\begin{picture}(300,150)(0,0)
-\put(0,0){\special{psfile = textedit.ps hscale = 80 vscale = 80}}
-\end{picture}\\
-\end{center}
-\caption{Textedit Interactivity}
-\end{figure}
+\begin{figure*}[t]
+  \begin{center}
+    \subfigure[Sunspider JS benchmark]{\label{fig:edge-a}\includegraphics[scale=0.75]{sunspider.ps}}
+    \subfigure[Textedit latency measurements]{\label{fig:edge-b}\includegraphics[scale=0.75]{textedit.ps}} \\
+  \end{center}
+  \label{fig:benchmarks}
+\end{figure*}
+
 
 This text came after the figure, so we'll casually refer to Figure 1
 as we go on our merry way.
@@ -271,9 +264,8 @@ cite tags you met earlier.  This is where they get resolved.
 We've preserved some real ones in addition to the template-speak.
 After the bibliography you are DONE.
 
-{\footnotesize \bibliographystyle{acm}
+\footnotesize{\bibliographystyle{acm}
 \bibliography{bibliography}}
-
 
 \theendnotes
 
