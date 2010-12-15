@@ -140,9 +140,9 @@ There is a slight chicken and egg problem here, since an application needs to al
 \item Decomposition
 \end{enumerate}
 
-Since this project is largely motivated by Tesselation OS~\cite{liu09tessellation, tessellation-hotpar10}, we would like to be able to port our design to the code base of Tesselation. It will be easier to do so with Qt Embedded since the it is not as complicated and large as, say, X/X11 stack. Not only that, it will also be harder to promise the resource guarantees if the GUI service has a number of layers embedded within.
+Since this project is largely motivated by Tessellation OS~\cite{liu09tessellation, tessellation-hotpar10}, we would like to be able to port our design to the code base of Tessellation. It will be easier to do so with Qt Embedded since the it is not as complicated and large as, say, X/X11 stack. Not only that, it will also be harder to promise the resource guarantees if the GUI service has a number of layers embedded within.
 
-Fortunately for us, Qt's client/server model is decomposed in a way similar to Tesselation's and also, its code is very modularized. Hence, it's less harder in our part to find out which part of Qt that we should modify. 
+Fortunately for us, Qt's client/server model is decomposed in a way similar to Tessellation's and also, its code is very modularized. Hence, it's less harder in our part to find out which part of Qt that we should modify. 
 
 What happens in the internals of Qt is that, there is already a client and server, as mentioned earlier. The default communication mechanism that is being used here is tcp socket. Whenever the client wants to display an animation, it will notify the server that it would like to to do so. After a few messages have been exchanged and agreement has been reached, the server will assign the client its entitled share of the framebuffer which the client could use it as much as it likes for displaying the animation.
 
@@ -303,10 +303,14 @@ latex usenixTemplate
 }
 
 
-\subsection{Last SubSection}
+\subsection{Experience and Future Work}
+There are many ideas for future work that we hope to explore. First and foremost would be to port our existing work to Tessellation OS. This involves some components of the system to be tweaked to behave a little differently. For example, channel will be integrated to the base kernel functionality to provide a higher throughput and nameserver will be one of the system services that needs to start at boot time. Also, since Tessellation OS has a different signalling mechanism 
 
-Well, it's getting boring isn't it.  This is the last subsection
-before we wrap it up.
+Another possible idea for future work is that we could improve the performance of each components of our system. An example of this will be to enable our channel to use interrupt "rate-limiting" instead of interrupts only mechanism so as to minimize the overhead.
+
+Designing a composable SLAs will also add a great functionality to our system. In this case, each client will be able to discuss with any service on how many resources it could get. If a particular service is currently under-load, the client might be able to get more portion of the resource 
+
+\subsection{Conclusion}
 
 \section{Acknowledgments}
 
