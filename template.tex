@@ -114,7 +114,10 @@ We should mention these things in this section:
 \item Signalling mechanism
 \end{enumerate}
 
-Channel is the only communication mechanism that is being used in our system. The way we implement it is based on the existing 
+Channel is the only communication mechanism that is being used in our system. We build this by re-implementing the existing non-blocking buffer~\cite{Kim:2007:EAN:1260991.1261857} on top of Linux shared memory segments. All of the channels, except the nameserver's which is going to be discussed later, is lock-free so as to minimize the overhead of lock contention as much as possible and thereby increasing the throughput.
+
+This communication mechanism is point-to-point too. The way one entity inform the other that data has been to their side is by the UNIX signalling mechanism. For simplicity purpose, the entity neither do any combination of polling and interrupt nor polling mechanism although that will certainly add a considerable amount of overhead in the system.
+
 
 \subsection{Nameserver} % This is could really be a subsubsection of channels
 The nameserver functions similarly to a DNS server for channel IPC. It allows services to register themselves under an ASCII string {\tt name}, which can then be used in other applications and services. When a subsequent request is placed for this {\tt name}, the nameserver initializes a new channel and sends the shared memory ID to both processes. Further communication between the server and client happen without further nameserver intervention.
@@ -131,6 +134,12 @@ There is a slight chicken and egg problem here, since an application needs to al
 
 \subsection{Resource Allocation Daemon}
 
+The purpose of resource allocation daemon is to provide any services and clients with whatever hardware resources that they are requesting. One type of resource that all clients and services will need is CPU. This is one of the first things that the clients and the systems will have to request for.
+
+One point to note here is that the client will not request, say, a guaranteed portion of the graphic driver directly to the resource allocation daemon. It's actually the service will request a big portion of this resource. Then, the client will request its portion of this resource from the service to do whatever the client wants. 
+
+There is a huge possibility of separating the policy from the mechanism in our system. In that case, different priorities could be assigned to the clients and a client who has a higher priority will be entitled to more share of the resources. However, due to time constraints, we leave this possibility for future work
+ 
 Here's a typical figure reference.  The figure is centered at the
 top of the column.  It's scaled.  It's explicitly placed.  You'll
 have to tweak the numbers to get what you want.\\
