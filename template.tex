@@ -117,7 +117,7 @@ We should mention these things in this section:
 \subsection{Nameserver} % This is could really be a subsubsection of channels
 The nameserver functions similarly to a DNS server for channel IPC. It allows services to register themselves under an ASCII string {\tt name}, which can then be used in other applications and services. When a subsequent request is placed for this {\tt name}, the nameserver initializes a new channel and sends the shared memory ID to both processes. Further communication between the server and client happen without further nameserver intervention.
 
-There is a slight chicken and egg problem here, since an application needs to already have a channel open to the nameserver before it can request channels to be opened. This is handled by reserving a globally known channel for this initialization step; applications will get a lock, inform the nameserver of its presence, wait for the nameserver to allocate a new channel for the two of them, and then unlock and continue communication on the new channel. Since this initialization channel is only used once by each process, there is little lock contention.
+There is a slight chicken and egg problem here, since an application needs to already have a channel open to the nameserver before it can request channels to be opened. This is handled by reserving a globally known channel purely for this initialization step; applications will get a lock, inform the nameserver of its presence, wait for the nameserver to allocate a new channel for the two of them, and then unlock and continue communication on the new channel. Since this initialization channel is only used once by each process, there is little lock contention.
 
 \subsection{Qt Embedded}
 \begin{enumerate}
@@ -136,11 +136,19 @@ have to tweak the numbers to get what you want.\\
 % you can also use the wonderful epsfig package...
 \begin{figure}[t]
 \begin{center}
-\begin{picture}(300,160)(0,0)
-\put(0,0){\special{psfile = sunspider.ps hscale = 50 vscale = 50}}
+\begin{picture}(300,150)(0,0)
+\put(0,0){\special{psfile = sunspider.ps hscale = 80 vscale = 80}}
 \end{picture}\\
 \end{center}
 \caption{Sunspider Javascript benchmark}
+\end{figure}
+\begin{figure}[t]
+\begin{center}
+\begin{picture}(300,150)(0,0)
+\put(0,0){\special{psfile = textedit.ps hscale = 80 vscale = 80}}
+\end{picture}\\
+\end{center}
+\caption{Textedit Interactivity}
 \end{figure}
 
 This text came after the figure, so we'll casually refer to Figure 1
@@ -239,7 +247,7 @@ We've preserved some real ones in addition to the template-speak.
 After the bibliography you are DONE.
 
 {\footnotesize \bibliographystyle{acm}
-\bibliography{../common/bibliography}}
+\bibliography{bibliography.tex}}
 
 
 \theendnotes
