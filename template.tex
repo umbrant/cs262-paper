@@ -67,7 +67,15 @@ The manycore machines of the future will likely run a diverse set of concurrent 
 
 \section{Introduction}
 
-Motivation: existing schedulers do a poor job running simultaneous workloads with similar resource requirements and different interactive requirements. What we want is performance isolation.
+Scheduler is one of the central components of any operating system. It needs to ensure the fairness on each of the application that is running. Hence, none of the applications should be experiencing resource (e.g., CPU time, network driver access) starvation that they are entitled to and none of them should be able to hog all of the resources to their own convenience. Of course, things are more involved than that. We want to have applications with \emph{higher} priority to be allocated \emph{more portion} of the resources than those with lower priority.
+
+Unfortunately, existing schedulers do a poor job running simultaneous workloads because they do not pay attention to the different interactive requirements of each application. For instance, when a kernel compilation is invoked from 2.6.x kernel, the performance of a simultaneously running movie player degrades so much that it becomes unwatchable~\cite{DBLP:conf/osdi/YangLBKM08}. However, we could not place the blame solely on the current operating systems since applications increasingly generate heavy workloads. State-of-the-art humanoids robotics have hard and soft real-time applications that needs to be met~\cite{Yoo:2009:RPD:1618617.1618723, Kaneko04humanoidrobot}. 
+
+Additionally, as the number of cores in a computer keep steadily increasing people would like a more linear speed-up on the performance of their applications. Clearly this is not happening in the current operating systems as it has been shown in a number of earlier works.
+
+This paper presents a proof-of-concept schedulers from Tessellation OS~\cite{liu09tessellation, tessellation-hotpar10} to show that a fundamentally different scheduler is required as we progress into the era of many-cores. The scheduler that we are proposing here 
+
+What we want is performance isolation.
 
 Tessellation / Decomposition into the Cell model
 
@@ -98,8 +106,14 @@ look like the following :
   \label{fig:implementation}
 \end{figure*}
 
-In this section we will describe the functionalities and importance of each component of our system and how are they implemented, noting which implementation choice is derived from Tessellation OS, which choice is derived from ease of engineering, etcetera
- 
+\subsection{The Big Picture}
+
+In this section, we will tie each of the components of the system described earlier to provide a holistic view on the chronology of events. At the beginning, it will only be resource allocation daemon who is running. Then, the nameserver will come along and requests its share of the CPUs to the daemon. The necessary services (in the scope of our paper, only I/O service) and the client applications will do the same too. 
+
+After that, the I/O service will try to register itself to the nameserver. If the nameserver permits the registration, the service will be saved in the nameserver's database for future lookups. Failure of registration will result in termination of the service immediately because that can only mean an alien service is trying to be registered or that the nameserver is too busy to accept another service. Following that, whenever a client application starts and request communication with the I/O service, the nameserver will look for the name of the service. If the service is found in its database, the nameserver then hands a unique id of the channel that is going to be used for the communication between the client and the service and the pid of the service that is to be used for the signalling mechanism. The nameserver is going to reject the client if the service does not have any free channel id though.
+
+When that step is completed, the client just needs to do a simple handshaking protocol with the service, letting it know that there's a client that wants to talk to it. The client could then freely discuss with the service to be guaranteed its share of the resources that the service is holding.
+
 \subsection{Channels}
 We should mention these things in this section:
 \begin{enumerate}
@@ -147,14 +161,6 @@ Processes that wish to be isolated have to explicitly query the resource allocat
 \textbf{Service/client allocation.} There is one more important aspect of resource allocation that we wish to highlight. When applications are heavily dependent on system services, it is desirable for the service to be able to "bill" the client for actions taken on its behalf. This can be done in either a bottom up or top down approach. In the former, a service is given an allocation of resources, and decides internally how best to split time among its clients. In the latter, clients are instead given an allocation that they can give out to services to perform actions on their behalf.
 
 The core difference in these two models is where policies are enforced; the bottom up approach complicates services, which need to be able to maximize utility among their client applications, while the top down approach complicates applications, which will need to maximize their utility across multiple services.
-
-\subsection{The Big Picture}
-
-In this section, we will tie each of the components of the system described earlier to provide a holistic view on the chronology of events. At the beginning, it will only be resource allocation daemon who is running. Then, the nameserver will come along and requests its share of the CPUs to the daemon. The necessary services (in the scope of our paper, only I/O service) and the client applications will do the same too. 
-
-After that, the I/O service will try to register itself to the nameserver. If the nameserver permits the registration, the service will be saved in the nameserver's database for future lookups. Failure of registration will result in termination of the service immediately because that can only mean an alien service is trying to be registered or that the nameserver is too busy to accept another service. Following that, whenever a client application starts and request communication with the I/O service, the nameserver will look for the name of the service. If the service is found in its database, the nameserver then hands a unique id of the channel that is going to be used for the communication between the client and the service and the pid of the service that is to be used for the signalling mechanism. The nameserver is going to reject the client if the service does not have any free channel id though.
-
-When that step is completed, the client just needs to do a simple handshaking protocol with the service, letting it know that there's a client that wants to talk to it. The client could then freely discuss with the service to be guaranteed its share of the resources that the service is holding.
 
 \section{Evaluation}
 
