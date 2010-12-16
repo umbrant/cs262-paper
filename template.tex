@@ -20,7 +20,7 @@
 % usepackage command, below.
 
 % This version uses the latex2e styles, not the very ancient 2.09 stuff.
-\documentclass[letterpaper,twocolumn,10pt]{article}
+\documentclass[letterpaper,twocolumn,11pt]{article}
 \usepackage{usenix,epsfig,endnotes}
 \usepackage{subfigure}
 \usepackage{color}
@@ -105,8 +105,6 @@ look like the following :
   \label{fig:implementation}
 \end{figure*}
 
-\subsection{The Big Picture}
-
 In this section, we will tie each of the components of the system described earlier to provide a holistic view on the chronology of events. At the beginning, it will only be resource allocation daemon who is running. Then, the nameserver will come along and requests its share of the CPUs to the daemon. The necessary services (in the scope of our paper, only I/O service) and the client applications will do the same too. 
 
 After that, the I/O service will try to register itself to the nameserver. If the nameserver permits the registration, the service will be saved in the nameserver's database for future lookups. Failure of registration will result in termination of the service immediately because that can only mean an alien service is trying to be registered or that the nameserver is too busy to accept another service. Following that, whenever a client application starts and request communication with the I/O service, the nameserver will look for the name of the service. If the service is found in its database, the nameserver then hands a unique id of the channel that is going to be used for the communication between the client and the service and the pid of the service that is to be used for the signalling mechanism. The nameserver is going to reject the client if the service does not have any free channel id though.
@@ -114,21 +112,14 @@ After that, the I/O service will try to register itself to the nameserver. If th
 When that step is completed, the client just needs to do a simple handshaking protocol with the service, letting it know that there's a client that wants to talk to it. The client could then freely discuss with the service to be guaranteed its share of the resources that the service is holding.
 
 \subsection{Channels}
-We should mention these things in this section:
-\begin{enumerate}
-\item Lock free mechanism
-\item Single consumer/producer
-\item Loose measurement details (throughput for small message size)
-\item Shared memory
-\item Signalling mechanism
-\end{enumerate}
 
-Channel is the only form of communication mechanism that is being used in our system. We build this by re-implementing the existing non-blocking buffer~\cite{Kim:2007:EAN:1260991.1261857} on top of Linux shared memory segments. All of the channels, except the nameserver's which is going to be discussed later, is lock-free so as to minimize the overhead of lock contention as much as possible and thereby increasing the throughput.
+Channels are an asynchronous, lock-free, lightweight form of interprocess communication at the core of Tessellation OS. Channels only support communication between two processes; more complicated communication patterns can be built by opening more channels. The intended benefits from using channels as opposed to traditional forms of communication (such as shared memory or sockets) are lower overhead and better performance and security isolation~\cite{tessellation-hotpar10}.
 
-The way we design the channel is by creating two non-blocking buffers, one for each way of communication. Essentially, this is a full-duplex communication. We design it this way so that there will be no collisions when data is being sent by both ends of the channel simultaneously. All of the channels, except nameserver's, will be point-to-point as a direct consequence of supporting the lock-free feature. 
+Our channel implementation depends upon non-blocking buffers, described by Kim, Colmenares, and Rim~\cite{Kim:2007:EAN:1260991.1261857}. A non-blocking buffer is essentially a circular buffer in shared memory that supports a single producer and single consumer. Instead of using a lock, it relies on the atomicity of integer reads and writes along with multiple integer counters to synchronize access. Our channel implementation uses two of these unidirectional buffers to form a single, bidirectional channel.
 
-The way one entity inform the other that data has been to their side is by the UNIX signalling mechanism. For simplicity purpose, the entity neither do any combination of polling and interrupt nor polling mechanism although that will certainly add a considerable amount of overhead in the system.
+One design choice we made was the notification mechanism to inform another process that there is new data availabel in the channel. There are two basic approaches here: asynchronous notifications through a Unix signal or other interrupt, or relying on the receiving process to poll when it is ready to handle more data. Our default policy is a combination of the two; the sender uses Unix signals to interrupt the receiving process when it places new data in the buffer. The signal handler of the receiving process is then expected to poll until the buffer is empty. An examination of the tradeoffs between polling and interrupts is left for future work; our default policy represents a balance between ease of use and performance.
 
+Channels also provide a far richer API than non-blocking buffers. The first, and most obvious, is the construction of synchronous read and write calls built on top of the asynchronous versions. We also provide a number of functions that allow processes to specify a custom signal handler, and implement an internal delay buffer to hold items that have already been read from the non-blocking buffer but are not ready to be handled by the application. All in all, our implementation weighs in at a total of 777 SLOC.
 
 \subsection{Nameserver}
 The nameserver functions similarly to a DNS server for channel IPC. It allows services to register themselves under an ASCII string {\tt name}, which can then be used in other applications and services. When a subsequent request is placed for this {\tt name}, the nameserver initializes a new channel and sends the shared memory ID to both processes. Further communication between the server and client happen without further nameserver intervention.
@@ -138,6 +129,7 @@ There is a slight chicken and egg problem here, since an application needs to al
 \subsection{Qt Embedded}
 
 The primary reason we chose to modify Qt Embedded was because of its advertised ease of porting to other platforms. Qt Embedded already provides support for Embedded Linux, Windows Mobile, Symbian, and MeeGo, and has minimal architecture and OS requirements for further porting efforts to Tessellation OS~\cite{qtembedded}.
+
  Qt Embedded runs directly on a framebuffer with the provided software renderer, removing the need for writing a real graphics driver or also porting the X stack and a window manager. This ease of porting has been leveraged in at least one other operating system research project we are aware of~\cite{ibos}. 
 
 Qt Embedded is structured as a service/client model that separates the responsibilities of receiving and handling user interaction, as well as the responsibilities of rendering and drawing to the screen. The I/O service initially receives all mouse and keyboard events and forwards them to the correct client application. The application then processes the event and renders any changes to a shared memory region. The service is then responsible for using the graphics driver to copy the rendered image to the screen. This division of responsibilities made Qt Embedded a natural target for our project.
