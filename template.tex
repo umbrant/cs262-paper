@@ -69,18 +69,17 @@ The manycore machines of the future will likely run a diverse set of concurrent 
 
 Scheduler is one of the central components of any operating system. It needs to ensure the fairness on each of the application that is running. Hence, none of the applications should be experiencing resource (e.g., CPU time, network driver access) starvation that they are entitled to and none of them should be able to hog all of the resources to their own convenience. Of course, things are more involved than that. We want to have applications with \emph{higher} priority to be allocated \emph{more portion} of the resources than those with lower priority.
 
-Unfortunately, existing schedulers do a poor job running simultaneous workloads because they do not pay attention to the different interactive requirements of each application. For instance, when a kernel compilation is invoked from 2.6.x kernel, the performance of a simultaneously running movie player degrades so much that it becomes unwatchable~\cite{DBLP:conf/osdi/YangLBKM08}. However, we could not place the blame solely on the current operating systems since applications increasingly generate heavy workloads. State-of-the-art humanoids robotics have hard and soft real-time applications that needs to be met~\cite{Yoo:2009:RPD:1618617.1618723, Kaneko04humanoidrobot}. 
+Unfortunately, existing schedulers do a poor job running simultaneous workloads because they do not pay attention to the different interactive requirements of each application. For instance, when a kernel compilation is invoked from 2.6.x kernel, the performance of a simultaneously running movie player degrades so much that it becomes unwatchable~\cite{DBLP:conf/osdi/YangLBKM08}. However, we could not place the blame solely on the current operating systems since applications increasingly generate heavy workloads. State-of-the-art humanoids robotics, for example, have hard and soft real-time applications that needs to be met~\cite{Yoo:2009:RPD:1618617.1618723, Kaneko04humanoidrobot}. 
 
-Additionally, as the number of cores in a computer keep steadily increasing people would like a more linear speed-up on the performance of their applications. Clearly this is not happening in the current operating systems as it has been shown in a number of earlier works.
+Additionally, as the number of cores in a computer keep steadily increasing people would like a more linear speed-up on the performance of their applications. Clearly this is not happening in the current operating systems as it has been shown in a number of earlier works~\cite{linux:osdi10}.
 
-This paper presents a proof-of-concept schedulers from Tessellation OS~\cite{liu09tessellation, tessellation-hotpar10} to show that a fundamentally different scheduler is required as we progress into the era of many-cores. The scheduler that we are proposing here 
+This paper presents a proof-of-concept schedulers from Tessellation OS~\cite{liu09tessellation, tessellation-hotpar10} to show that a fundamentally different scheduler is required as we progress into the era of many-cores. The scheduler that we are proposing here takes feedback from the requirements of the application and that it either guarantees the requirements strictly or it does not.
 
-What we want is performance isolation.
+Before we delve into the details of the scheduler, we would like to give an overview on how things are structured in the Tessellation OS model. The concept of space-time partitioning is introduced here which basically means that each service (e.g., media player, file system) in the operating system will be allocated a subset of the cores for an exact portion of a time. 
 
-Tessellation / Decomposition into the Cell model
+With such kind of system, it will be much easier to preserve the interactivity of the GUI applications because effectively, the performance of each of the applications will be isolated from each other. Hence, even if there is a intensive CPU bound task that is running in the background, our media player's performance is not going to be impacted by it as we are going to prove later in the paper.
 
-
-More fascinating text. Features\endnote{Remember to use endnotes, not footnotes!} galore, plethora of promises.\\
+Note that we built our system on top of Linux due to the fact that the code base for Tessellation OS is on its very alpha stage currently. While in Linux, the mechanisms that we are building each components of our system on is very stable, e.g. shared memory segment and the UNIX signalling primitives. In addition to that, it will be interesting to see if a solution to this problem could be patched into the commodity operating systems and that if there is any need to build a new operating system.
 
 \section{Related Work}
 
