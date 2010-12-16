@@ -22,7 +22,6 @@
 % This version uses the latex2e styles, not the very ancient 2.09 stuff.
 \documentclass[letterpaper,twocolumn,11pt]{article}
 \usepackage{usenix,epsfig,endnotes}
-\usepackage{indentfirst}
 \usepackage{subfigure}
 \usepackage{color}
 \usepackage{array}
@@ -60,23 +59,23 @@ awang@eecs.berkeley.edu
 
 % Use the following at camera-ready time to suppress page numbers.
 % Comment it out when you first submit the paper for review.
-%\thispagestyle{empty}
+\thispagestyle{empty}
 
 
 \subsection*{Abstract}
-The manycore machines of the future will likely run a diverse set of concurrent workloads. This places additional demands on resource allocation and scheduling policies of the operating system to ensure interactive behavior of foreground user applications while running high throughput batch processing jobs in the background. In our paper, we show that a degree of performance isolation can be achieved on Linux through the use of the existing cpuset mechanism for realistic GUI applications.
+The manycore machines of the future will likely run a diverse set of concurrent workloads, placing additional demands on resource allocation and scheduling policies of the operating system to ensure interactive behavior of user applications while running high throughput batch processing jobs in the background. In our paper, we show that a degree of performance isolation can be achieved on Linux through the use of the existing cpuset mechanism for realistic GUI applications.
 
 \section{Introduction}
 
-Computer architecture is undergoing a fundamental shift that dictates an equally fundamental shift in operating systems. Moore's law is now being applied to CPU cores rather than clock rate, meaning that commodity processors could soon be have tens, even hundreds of cores. Current operating systems are not well suited for this ``manycore'' future; Recent research indicates that scaling of the base operating system itself might not be an issue~\cite{linux:osdi10}, but still leaves open the problem of how to gracefully run a variety of concurrent applications with different performance and resource requirements, especially on single user systems.
+Computer architecture is undergoing a fundamental shift that dictates an equally fundamental shift in operating systems. Moore's law is now being applied to CPU cores rather than clock rate, meaning that commodity processors could soon be have dozens, even hundreds of cores. Current operating systems are not well suited for this "manycore" future; recent research indicates that scaling of the base operating system itself might not be an issue~\cite{linux:osdi10}, but still leaves open the problem of how to gracefully run a variety of concurrent applications with different performance and resource requirements, especially on single user systems.
 
-Already, running a parallel kernel build while watching a movie degrades framerates to unwatchable levels~\cite{DBLP:conf/osdi/YangLBKM08}. This will only be exacerbated by manycore architectures, since users are likely to simultaneously run a mix of highly parallel interactive, real-time, and batch jobs~\cite{liu09tessellation}. This puts additional stress on schedulers, requiring that they present the right tradeoff between latency-sensitive, real-time, and throughput applications without putting too much additional burden on users or application programmers to manually specify policies. These requirements are already found in specialized applications such as state-of-the-art humanoid robotics, which have very demanding hard and soft real-time requirements~\cite{Yoo:2009:RPD:1618617.1618723, Kaneko04humanoidrobot}. 
+Already, running a parallel kernel build while watching a movie degrades framerates to unwatchable levels~\cite{DBLP:conf/osdi/YangLBKM08}. This will only be exacerbated by manycore architectures, since users will be likely to simultaneously run a mix of highly parallel interactive, real-time, and batch jobs~\cite{liu09tessellation}. This puts additional stress on schedulers, requiring that they present the right tradeoff between latency-sensitive, real-time, and throughput applications without putting too much additional burden on users or application programmers to manually specify policies. These requirements are already found in specialized applications such as state-of-the-art humanoid robotics, which have demanding hard and soft real-time requirements~\cite{Yoo:2009:RPD:1618617.1618723, Kaneko04humanoidrobot}. 
 
-It is clear that the current generation of best effort schedulers do not meet these demands. Moreover, this variety of scheduling requirements also applies to resources other than CPU time, such as disk and memory I/O, network access, and CPU caches. For an application to provide high-level performance guarantees to the user, operating systems must provide holistic guarantees to applications regarding all types of system resources.
+It is clear that the current generation of best effort schedulers do not meet these demands; moreover, this variety of scheduling requirements also applies to resources other than CPU time, such as disk and memory I/O, network access, and CPU caches. For an application to provide high-level performance guarantees to the user, operating systems must provide holistic guarantees to applications regarding all types of system resources.
 
-This can be phrased as applications requiring \textit{performance isolation} even under contention for shared resources. This problem is addressed by the Tessellation research operating system through two mechanisms: space-time partitioning and two-level scheduling~\cite{liu09tessellation}~\cite{tessellation-hotpar10}. These mechanisms are achieved through novel software/hardware integration, one key aspect being microkernel-style services that each implement a single OS function, and can provide their own service level agreements based on their resource allocation. Further detail is deferred to the Tessellation references, but these mechanisms allow Tessellation to make strong space-time resource guarantees such as ``2 cores for 50\% of the time'' or ``500 disk I/O operations a second'' to applications. Given these guarantees, applications can then make their own assurances about their performance to the user, attaining performance isolation.
+This can be phrased as applications requiring \textit{performance isolation} even under contention for shared resources. This problem is solved by the Tessellation research operating system through two mechanisms: space-time partitioning and two-level scheduling. These mechanisms are achieved through novel software/hardware integration, one key aspect being microkernel-style services that each implement a single OS function, and can provide their own service level agreements based on their resource allocation. Further detail is deferred to the Tessellation references, but these mechanisms allow Tessellation to make strong space-time resource guarantees such as "2 cores for 50\% of the time" or "500 disk I/O operations a second" to applications. Given these guarantees, applications can then make different guarantees about their performance to the user, attaining performance isolation~\cite{liu09tessellation}~\cite{tessellation-hotpar10}.
 
-Our contribution in this paper is taking some of these ideas from Tessellation and translating them to a recent Linux distribution. We started with the goal of decomposing a number of GUI applications into services that each provide a specific, limited function, and then using Linux's CPU pinning mechanisms to assign each service its own core. Our work resulted in a modified, service-oriented version of the Qt GUI application framework as well as a resource allocation daemon that can provide strong resource guarantees to our Qt GUI applications. We compare two realistic Qt applications under idle and loaded conditions to show that this approach does not impose a significant performance overhead, and that it performs far better in terms of throughput and interactivity under resource contention.
+Our contribution in this paper is taking some of these ideas from Tessellation and translating them to a recent Linux distribution. We started with the goal of decomposing a number of GUI applications into services that each provide a specific, limited function, and then using Linux's CPU pinning mechanisms to assign each service its own core. Our work resulted in a modified, service-oriented version of the Qt GUI application framework as well as a resource allocation daemon that can provide strong resource guarantees to our GUI applications. We compare two realistic Qt applications under idle and loaded conditions to show that this approach does not impose a significant performance overhead, and performs far better in terms of throughput and interactivity under resource contention.
 
 One longer-term goal that influenced our project is porting Qt to Tessellation OS. Ideally, this system would have been built on top of Tessellation to begin with, but due to the pre-alpha stage of the Tessellation code base, required functionality for a Qt port, such as a graphics driver, shared memory, and interprocess communication, were not in a state ready to support our project. However, many of our design and implementation decisions were still heavily influenced by this long term porting goal; some aspects of our system depend on Tessellation OS functionality (such as lightweight user-level interrupts) that make some parts of our system relatively less efficient than a traditional Linux version. 
 
@@ -149,7 +148,7 @@ Qt Embedded is structured as a service/client model that separates the responsib
 
 Keyboard and mouse events are by default passed from the I/O service to the client application over a local TCP socket. This presented a clean interface for substituting in channel-based communication; we ended up implementing Qt's QAbstractSocket API without major changes to the I/O service or client, indicating that this style of socket communication might fit within the point-to-point channel paradigm.
 
-One of our desired, but unimplemented, features was splitting the graphics rendering and drawing to the screen into a separate service. This would have enabled interesting policies, such as having the window manager rendering only the foreground window as a form of load shedding, or presenting a degraded degree of quality. It also would have removed a dependency on Linux's shared memory mechanisms, instead passing rendered images over channel IPC.
+One of our desired, but unimplemented, features was splitting the graphics rendering and drawing to the screen into a separate service. This would have enabled interesting policies, such as having the window manager rendering only the foreground window as a form of load shedding, or presenting a degraded degree of quality. It would have also removed a dependence on Linux's shared memory mechanisms, instead passing rendered images over channel IPC.
 
 The applications we chose for testing were demo applications packaged with the Qt source code. Since all of our modification efforts were in the underlying framework, the applications themselves required no source changes to run on our version of Qt Embedded. This means that porting applications to our system is essentially free; we were successfully able to run a web browser, animation demo, text editor, raytracer, and image viewer. Ultimately, we chose the web browser and text editor for evaluation; we are also seeking to port more complicated Qt applications to our system.
 
@@ -165,7 +164,7 @@ Processes that wish to be isolated have to explicitly query the resource allocat
 
 \textbf{Limitations.} This initial implementation is admittedly rudimentary; it can only allocate CPUs at the granularity of entire cores, it does not handle other resources such as memory, cache, or the hard drive, and does not have any policy mechanisms whatsoever. These are all limitations tackled by Tessellation's two-level scheduling and space-time partitioning; together, they allow for dynamic, fine-grained policies regarding many types of resource allocation; we defer to their publications for full details~\cite{liu09tessellation}~\cite{tessellation-hotpar10}.
 
-\textbf{Service/client allocation.} There is one more important aspect of resource allocation that we wish to highlight. When applications are heavily dependent on system services, it is desirable for the service to be able to ``bill'' the client for actions taken on its behalf. This can be done in either a bottom up or top down approach. In the former, a service is given an allocation of resources, and decides internally how best to split time among its clients. In the latter, clients are instead given an allocation that they can give out to services to perform actions on their behalf.
+\textbf{Service/client allocation.} There is one more important aspect of resource allocation that we wish to highlight. When applications are heavily dependent on system services, it is desirable for the service to be able to "bill" the client for actions taken on its behalf. This can be done in either a bottom up or top down approach. In the former, a service is given an allocation of resources, and decides internally how best to split time among its clients. In the latter, clients are instead given an allocation that they can give out to services to perform actions on their behalf.
 
 The core difference in these two models is where policies are enforced; the bottom up approach complicates services, which need to be able to maximize utility among their client applications, while the top down approach complicates applications, which will need to maximize their utility across multiple services.
 
@@ -206,7 +205,7 @@ Latency ($\mu$s/msg)	&1.53	&1.52	&1.74	&1.67\\
 
 \subsection{Web Browser}
 
-The first user application we chose for testing was a simple Qt web browser based on WebKit, included with the Qt source code. Browsers are one of the most commonly used and installed user applications, making this Qt web browser a representative choice as a ``real world'' application. Testing browser performance is also easy through the use of a wide variety of Javascript benchmark suites, such as SunSpider~\cite{sunspider}, Kraken~\cite{kraken}, and V8~\cite{v8benchmark}.
+The first user application we chose for testing was a simple Qt web browser based on WebKit, included with the Qt source code. Browsers are one of the most commonly used and installed user applications, making this Qt web browser a representative choice as a "real world" application. Testing browser performance is also easy through the use of a wide variety of Javascript benchmark suites, such as SunSpider~\cite{sunspider}, Kraken~\cite{kraken}, and V8~\cite{v8benchmark}.
 
 We chose to use Apple's SunSpider JS benchmark, which is mostly CPU-bound. Figure \ref{fig:benchmarks} shows the time to complete SunSpider, lower being better. In the no load case, the unmodified version of Qt performs roughly three times faster than our version. This is somewhat disappointing; our current guess is that signal handling within the channels is triggering a large number of context switches.
 
@@ -247,13 +246,13 @@ Policies inside of the I/O service
 
 Making the client pass rendered images to the service over channels
 
-\textbf{Composable SLAs.} One of the key questions being examined by Tessellation group is whether there is an ``SLA explosion'' effect due to nested service dependencies. These dependencies of services on other services could rapidly degrade performance guarantees, due to the additional uncertainty added with each layer. The question is whether existing operating systems suffer from this type of deep nesting of services, and if so, can operating system services can be structured in such a way to avoid this problem.
+\textbf{Composable SLAs.} One of the key questions being examined by Tessellation group is whether there is an "SLA explosion" effect due to nested service dependencies. These dependencies of services on other services could rapidly degrade performance guarantees, due to the additional uncertainty added with each layer. The question is whether existing operating systems suffer from this type of deep nesting of services, and if so, can operating system services can be structured in such a way to avoid this problem.
 
 \textbf{Policy.} Resource allocation and scheduling policies is one of the more interesting thrusts for further work. Some of are ideas are to implement forms of load shedding in services as a method of graceful degradation, integrating dynamic priorities for applications based on user interaction, and automatic profiling of how resource allocation affects application performance.
 
-\textbf{Decomposition.} Our implementation only touches on the possibilities for decomposition for GUI applications. As mentioned earlier, there are many core system functions that could be made into services for more consistent performance, such as the network driver, disk I/O, and screen drawing. There is also room for further decomposition within an application; it is easy to imagine a complex application such as a web browser being divided into separate parts based on realtime, latency, and resource requirements.
+\textbf{Decomposition.} 
 
-\textbf{Parallelism.} 
+making services more parallel, running more apps at once, scaling them dynamically based on resource needs
 
 One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the services, we are pretty sure that they are not parallelized thoroughly yet. 
 
@@ -265,10 +264,6 @@ Designing a composable SLAs will also add a great functionality to our system. I
 
 In this paper, we have presented a proof that the research direction, i.e. cores partitioning, of Tessellation OS is one candidate for the winning solution in the era of many-cores. We have demonstrated a satisfying performance on intricate, real-world applications. Whether we will need a new operating system or not to preserve the interactivity of applications will be another unanswered question in our paper. This might be solved if we are able to successfully port our system to Tessellation and does experiments with it.
 
-\section{Acknowledgements}
-
-The inspiration for this project, and many of the ideas, were drawn from the Par Lab Tessellation OS group, in particular John Kubiatowicz and Juan Colmenares. 
-
 \section{Availability}
 
 All of our code is available under a dual GPL/LGPL open source license at~\url{http://www.github.com/~azuriel/Qt-channels}
@@ -276,6 +271,6 @@ All of our code is available under a dual GPL/LGPL open source license at~\url{h
 \footnotesize{\bibliographystyle{acm}
 \bibliography{bibliography}}
 
-%\theendnotes
+\theendnotes
 
 \end{document}
