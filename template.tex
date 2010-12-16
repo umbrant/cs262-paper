@@ -88,6 +88,9 @@ Some embedded literal typset code might
 look like the following :
 
 \section{Implementation}
+
+In this section we will describe the functionalities and importance of each component of our system and how are they implemented, noting which implementation choice is derived from Tessellation OS, which choice is derived from ease of engineering, etcetera
+ 
 \subsection{Channels}
 We should mention these things in this section:
 \begin{enumerate}
@@ -98,9 +101,11 @@ We should mention these things in this section:
 \item Signalling mechanism
 \end{enumerate}
 
-Channel is the only communication mechanism that is being used in our system. We build this by re-implementing the existing non-blocking buffer~\cite{Kim:2007:EAN:1260991.1261857} on top of Linux shared memory segments. All of the channels, except the nameserver's which is going to be discussed later, is lock-free so as to minimize the overhead of lock contention as much as possible and thereby increasing the throughput.
+Channel is the only form of communication mechanism that is being used in our system. We build this by re-implementing the existing non-blocking buffer~\cite{Kim:2007:EAN:1260991.1261857} on top of Linux shared memory segments. All of the channels, except the nameserver's which is going to be discussed later, is lock-free so as to minimize the overhead of lock contention as much as possible and thereby increasing the throughput.
 
-This communication mechanism is point-to-point too. The way one entity inform the other that data has been to their side is by the UNIX signalling mechanism. For simplicity purpose, the entity neither do any combination of polling and interrupt nor polling mechanism although that will certainly add a considerable amount of overhead in the system.
+The way we design the channel is by creating two non-blocking buffers, one for each way of communication. Essentially, this is a full-duplex communication. We design it this way so that there will be no collisions when data is being sent by both ends of the channel simultaneously. All of the channels, except nameserver's, will be point-to-point as a direct consequence of supporting the lock-free feature. 
+
+The way one entity inform the other that data has been to their side is by the UNIX signalling mechanism. For simplicity purpose, the entity neither do any combination of polling and interrupt nor polling mechanism although that will certainly add a considerable amount of overhead in the system.
 
 
 \subsection{Nameserver}
@@ -120,7 +125,7 @@ Since this project is largely motivated by Tessellation OS~\cite{liu09tessellati
 
 Fortunately for us, Qt's client/server model is decomposed in a way similar to Tessellation's and also, its code is very modularized. Hence, it's less harder in our part to find out which part of Qt that we should modify. 
 
-What happens in the internals of Qt is that, there is already a client and server, as mentioned earlier. The default communication mechanism that is being used here is tcp socket. Whenever the client wants to display an animation, it will notify the server that it would like to to do so. After a few messages have been exchanged and agreement has been reached, the server will assign the client its entitled share of the framebuffer which the client could use it as much as it likes for displaying the animation.
+What happens in the internals of Qt is that, there is already a client and server, as mentioned earlier. The default communication mechanism that is being used here is TCP socket. Whenever the client wants to display an animation, it will notify the server that it would like to to do so. After a few messages have been exchanged and agreement has been reached, the server will assign the client its entitled share of the framebuffer which the client could use it as much as it likes for displaying the animation.
 
 Additionally, when there's an I/O input (e.g. mouse or keyboard), the server will be immediately notified of it and does some processing and/or filtering before forwarding it to the appropriate client. 
 
@@ -131,6 +136,14 @@ The purpose of resource allocation daemon is to provide any services and clients
 One point to note here is that the client will not request, say, a guaranteed portion of the graphic driver directly to the resource allocation daemon. It's actually the service will request a big portion of this resource. Then, the client will request its portion of this resource from the service to do whatever the client wants. 
 
 There is a huge possibility of separating the policy from the mechanism in our system. In that case, different priorities could be assigned to the clients and a client who has a higher priority will be entitled to more share of the resources. However, due to time constraints, we leave this possibility for future work
+
+\subsection{The Big Picture}
+
+In this section, we will tie each of the components of the system described earlier to provide a holistic view on the chronology of events. At the beginning, it will only be resource allocation daemon who is running. Then, the nameserver will come along and requests its share of the CPUs to the daemon. The necessary services (in the scope of our paper, only I/O service) and the client applications will do the same too. 
+
+After that, the I/O service will try to register itself to the nameserver. If the nameserver permits the registration, the service will be saved in the nameserver's database for future lookups. Failure of registration will result in termination of the service immediately because that can only mean an alien service is trying to be registered or that the nameserver is too busy to accept another service. Following that, whenever a client application starts and request communication with the I/O service, the nameserver will look for the name of the service. If the service is found in its database, the nameserver then hands a unique id of the channel that is going to be used for the communication between the client and the service and the pid of the service that is to be used for the signalling mechanism. The nameserver is going to reject the client if the service does not have any free channel id though.
+
+When that step is completed, the client just needs to do a simple handshaking protocol with the service, letting it know that there's a client that wants to talk to it. The client could then freely discuss with the service to be guaranteed its share of the resources that the service is holding.
 
 \section{Evaluation}
 
@@ -223,7 +236,7 @@ In this paper, we have presented a proof that the research direction, i.e. cores
 
 \section{Availability}
 
-Our system is available open source under an LGPL license at~\url{http://www.github.com/~azuriel/Qt-channels}
+Our system is available open source under an GPL/LGPL license at~\url{http://www.github.com/~azuriel/Qt-channels}
 
 \footnotesize{\bibliographystyle{acm}
 \bibliography{bibliography}}
