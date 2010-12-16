@@ -155,7 +155,7 @@ The applications we chose for testing were demo applications packaged with the Q
 
 \subsection{Resource Allocation Daemon}
 
-The resource allocation daemon is one of the crucial parts of the system. It uses Linux's existing {\tt cpuset} mechanism to group tasks into sets, and then pin each set to a subset of CPU cores. This is a strong isolation mechanism; once added to a cpuset, a process will only run on the cores assigned to that cpuset~\cite{cpusets}.
+The resource allocation daemon is one of the most crucial parts of the system. It uses Linux's existing {\tt cpuset} mechanism to group tasks into sets, and then pin each set to a subset of CPU cores. This is a strong isolation mechanism; once added to a cpuset, a process will only run on the cores assigned to that cpuset~\cite{cpusets}.
 
 There are a number of similar mechanisms on Linux that can also be used for pinning processes to cores (e.g. {\tt pbind}, {\tt sched\_setaffinity}), but cpusets have a few advantages over the alternatives. Cpusets make management of a large number of processes easier because they can be hierarchically nested (i.e., sets within sets). They are also persistent across, and can be configured to automatically assign new processes to a default set. Cpusets are also exposed through a special {\tt /dev} interface, meaning they can be manipulated directly from the command line without special tools.
 
@@ -182,13 +182,15 @@ The core difference in these two models is where policies are enforced; the bott
   \label{fig:benchmarks}
 \end{figure*}
 
-The test harness used was a commodity desktop PC with a quad core Intel i7-870 processor clocked at 2.93 GHz with 4GB of RAM. Hyperthreading, Turbo Boost, and power saving states were all disabled to normalize the performance of the CPU cores. Loaded conditions were simulated by running 128 CPU-bound background threads. This number is somewhat arbitrary, but a lower or higher number of threads would likely result in a proportional change without effecting the meaning of our results.
+The test harness used was a commodity desktop PC with a quad core Intel i7-870 processor clocked at 2.93 GHz with 4GB of RAM. Hyperthreading, Turbo Boost, and power states were all disabled to normalize the performance of the CPU cores. Loaded conditions were simulated by running 128 CPU-bound background threads. This number is somewhat arbitrary, but a lower or higher number of threads would likely result in a proportional change without affecting our conclusions.
 
-We encountered difficulties in getting both the modified and unmodified version of Qt to run correctly on an actual framebuffer. As a substitute, all tests were run on the Qt Embedded virtual framebuffer, an X11 application. This means there are additional layers of software, such as X11 and the WM, that interpose between user input and the I/O service. However, our timings are done above these layers, and we believe that this favors neither the unmodified nor channels-based version of Qt.
+We encountered difficulties in getting both the modified and unmodified version of Qt to run correctly on an actual framebuffer. As a substitute, all tests were run on the Qt Embedded virtual framebuffer, an X11 application used for testing. This means there are additional layers of software, such as X11 and the WM, that interpose between user input and the I/O service. However, our timings are done above these layers, and we believe that this favors neither the unmodified nor channels-based version of Qt.
 
 \subsection{Channels}
 
-To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were a bit larger ($<$200 bytes). As shown in Table \ref{tab:channel}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can still push 2.5 MB/s even for small 4 byte messages.
+To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. As shown in Table \ref{tab:channel}, our channel implementation handles sending these types of messages with latency in the range of microseconds with linear increase in throughput as the message size increases (up to 1KB). This indicates that the overhead from the new data signal notification mechanism totally dominates message copying times for small packet sizes.
+
+Profiling of client / service communication revealed that the vast majority of messages being sent between the I/O service and application were small (in the range of 4-24 bytes) with a few that were a bit larger ($<$200 bytes). This unfortunately falls on the lower end of our channel's performance spectrum, but the rate at which keyboard and mouse events is relatively low and limited by user interaction. This means that 2.5MB/s of throughput is still more than sufficient for our purposes. More importantly, messages are sent with near-microsecond latency, which is far faster than can be perceived.
 
 \begin{table}[tp]
 \caption{Channel Benchmarks}
@@ -206,7 +208,7 @@ Latency ($\mu$s/msg)	&1.53	&1.52	&1.74	&1.67\\
 
 \subsection{Web Browser}
 
-The first user application we chose for testing was a simple Qt web browser based on WebKit. Browsers are probably one of the most commonly used and installed user applications, making a browser a representative choice as a "real world" application. Browsers also have the benefit of a wide variety of Javascript benchmark suites, such as SunSpider~\cite{sunspider}, Kraken~\cite{kraken}, and V8~\cite{v8benchmark}.
+The first user application we chose for testing was a simple Qt web browser based on WebKit included with the Qt source code. Browsers are probably one of the most commonly used and installed user applications, making a browser a representative choice as a "real world" application. Browsers also have the benefit of a wide variety of Javascript benchmark suites, such as SunSpider~\cite{sunspider}, Kraken~\cite{kraken}, and V8~\cite{v8benchmark}.
 
 We chose to use Apple's SunSpider JS benchmark, which is mostly CPU-bound. Figure \ref{fig:benchmarks} shows the time to complete SunSpider, lower being better. In the no load case, the unmodified version of Qt performs roughly three times faster than our version. This is somewhat disappointing; our current guess is that signal handling within the channels is triggering a large number of context switches.
 
@@ -214,9 +216,9 @@ However, the tables are turned in the loaded situation. Our version of Qt mainta
 
 \subsection{Textedit}
 
-The second application we chose was a basic rich text editor, also included as one of the demo applications with the Qt source code. Compared to a browser, a text editor is a relatively simple application, but we feel it is a better test of interactive behavior. Users are likely to be less tolerant of jitter and latency in a text editor because of the expectation of immediate feedback on the screen. 
+The second application we chose was the rich text editor, also included as one of the demo applications with the Qt source code. Compared to a browser, a text editor is a relatively simple application, but we feel it is a better test of interactive behavior. Users are likely to be less tolerant of jitter and latency in a text editor because of the expectation of immediate feedback on the screen and the near constant interaction through typing. 
 
-To this end, we instrumented both Qt and Qt-C to measure the time it took an event entering the service to be received and then handled by the client. Keyboard and mouse events were fed to the textedit that were representative of normal usage. As illustrated in Figure \ref{fig:benchmarks} and Table \ref{tab:textedit_table}, Qt-C performs far better than Qt in terms of latency and variance in latency, with unmodified Qt performing highly erratically under load. This aligns with our own anecdotal experiences using both versions under load; with normal Qt, there is a noticeable delay in words appearing on screen, while the effect on the Qt-C version is imperceptible.
+To this end, we instrumented both Qt and Qt-C to measure the time it took an event arriving at the I/O service to be received and handled by the client. Keyboard and mouse events representative of normal usage were then fed to the textedit. As illustrated in Figure \ref{fig:benchmarks} and Table \ref{tab:textedit_table}, Qt-C performs far better than Qt in terms of latency and variance in latency, with unmodified Qt performing highly erratically under load. This aligns with our own anecdotal experiences using both versions under load; with normal Qt, there is a noticeable delay in words appearing on screen, while the effect on the Qt-C version is imperceptible.
 
 \begin{table}[htp]
 \caption{Textedit interactivity}
