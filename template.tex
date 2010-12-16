@@ -88,6 +88,16 @@ Some embedded literal typset code might
 look like the following :
 
 \section{Implementation}
+
+\begin{figure*}[t]
+  \begin{center}
+    \subfigure[Monolithic stack]{\label{fig:stack}\includegraphics[scale=0.35]{stack.ps}}
+    \subfigure[Service-based approach]{\label{fig:services}\includegraphics[scale=0.35]{services.ps}} \\
+  \end{center}
+  \caption{Comparison of default and channels-based Qt implementations}
+  \label{fig:implementation}
+\end{figure*}
+
 \subsection{Channels}
 We should mention these things in this section:
 \begin{enumerate}
@@ -117,6 +127,14 @@ Qt Embedded is structured as a service/client model that separates the responsib
 
 Keyboard and mouse events are by default passed from the I/O service to the client application over a local TCP socket. This presented a clean interface for substituting in channel-based communication; we ended up implementing Qt's QAbstractSocket API without major changes to the I/O service or client, indicating that this style of socket communication might fit within the point-to-point channel paradigm.
 
+\begin{figure*}[b]
+  \begin{center}
+    \subfigure[Textedit latency measurements]{\label{fig:edge-b}\includegraphics[scale=0.75]{textedit.ps}} \\
+  \end{center}
+  \caption{Comparison between unmodified and channels-based versions of Qt}
+  \label{fig:benchmarks}
+\end{figure*}
+
 \subsection{Resource Allocation Daemon}
 
 The purpose of resource allocation daemon is to provide any services and clients with whatever hardware resources that they are requesting. One type of resource that all clients and services will need is CPU. This is one of the first things that the clients and the systems will have to request for.
@@ -127,7 +145,8 @@ There is a huge possibility of separating the policy from the mechanism in our s
 
 \section{Evaluation}
 
-% you can also use the wonderful epsfig package...
+\subsection{Test setup}
+
 \begin{figure*}[t]
   \begin{center}
     \subfigure[Sunspider JS benchmark]{\label{fig:edge-a}\includegraphics[scale=0.75]{sunspider.ps}}
@@ -137,9 +156,7 @@ There is a huge possibility of separating the policy from the mechanism in our s
   \label{fig:benchmarks}
 \end{figure*}
 
-\subsection{Test setup}
-
-The test harness used was a commodity desktop PC with a quad core Intel i7-870 processor clocked at 2.93 GHz and 4GB of RAM. Hyperthreading, Turbo Boost, and power saving states were all disabled to normalize the performance of the CPU cores. Loaded conditions were simulated by running 128 CPU-bound background threads. This number is somewhat arbitrary, but a lower or higher number of threads would likely result in a proportional change without effecting the meaning of our results.
+The test harness used was a commodity desktop PC with a quad core Intel i7-870 processor clocked at 2.93 GHz with 4GB of RAM. Hyperthreading, Turbo Boost, and power saving states were all disabled to normalize the performance of the CPU cores. Loaded conditions were simulated by running 128 CPU-bound background threads. This number is somewhat arbitrary, but a lower or higher number of threads would likely result in a proportional change without effecting the meaning of our results.
 
 We encountered difficulties in getting both the modified and unmodified version of Qt to run correctly on an actual framebuffer. As a substitute, all tests were run on the Qt Embedded virtual framebuffer, an X11 application. This means there are additional layers of software, such as X11 and the WM, that interpose between user input and the I/O service. However, our timings are done above these layers, and we believe that this favors neither the unmodified nor channels-based version of Qt.
 
