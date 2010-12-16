@@ -248,11 +248,13 @@ Making the client pass rendered images to the service over channels
 
 Screen drawing / compositing / window manager service?
 
-There are many ideas for future work that we hope to explore. First and foremost would be to port our existing work to Tessellation OS. This involves some components of the system to be tweaked to behave a little differently. For example, channel will be integrated to the base kernel functionality to provide a higher throughput and nameserver will be one of the system services that needs to start at boot time. Also, since Tessellation OS has a different signalling mechanism 
+\textbf{Policy.} Resource allocation and scheduling policies is one of the more interesting thrusts for further work. Some of are ideas are to implement forms of load shedding in services as a method of graceful degradation, integrating dynamic priorities for applications based on user interaction, and automatic profiling of how resource allocation affects application performance.
 
-Although we manage to support a number of essential applications such as text-edit and a web browser, being able to support more applications will be nice. There is a plethora of applications out there that require real-time support including music/video player and drawing application and the success of this will definitely convince us further that cores partitioning is the winning solution in the era of many-cores.
+\textbf{Decomposition.} 
 
-Another possible idea for future work is that we could improve the performance of each components of our system. An example of this will be to enable our channel to use interrupt "rate-limiting" instead of interrupts only mechanism to minimize the overhead since we notice that Qt sends data in batches of mostly tens of bytes. One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the services, we are pretty sure that they are not parallelized thoroughly yet. 
+making services more parallel, running more apps at once, scaling them dynamically based on resource needs
+
+One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the services, we are pretty sure that they are not parallelized thoroughly yet. 
 
 In order to improve the performance further, we should decompose a more complicated client applications to be served by more number of services. Take the browser as an example. The browser could have its html parser as one service and the lexer as one service. Even more, we could distinguish the service that handles html display from the service that handles flash display.
 
