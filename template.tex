@@ -63,7 +63,7 @@ awang@eecs.berkeley.edu
 
 
 \subsection*{Abstract}
-The manycore machines of the future will likely run a diverse set of concurrent workloads, placing additional demands on resource allocation and scheduling policies of the operating system to ensure interactive behavior of user applications while running high throughput batch processing jobs in the background. In our paper, we show that a degree of performance isolation can be achieved on Linux through the use of the existing CPUSET mechanism for realistic GUI applications.
+The manycore machines of the future will likely run a diverse set of concurrent workloads, placing additional demands on resource allocation and scheduling policies of the operating system to ensure interactive behavior of user applications while running high throughput batch processing jobs in the background. In our paper, we show that a degree of performance isolation can be achieved on Linux through the use of the existing cpuset mechanism for realistic GUI applications.
 
 \section{Introduction}
 
@@ -145,21 +145,21 @@ Qt Embedded is structured as a service/client model that separates the responsib
 
 Keyboard and mouse events are by default passed from the I/O service to the client application over a local TCP socket. This presented a clean interface for substituting in channel-based communication; we ended up implementing Qt's QAbstractSocket API without major changes to the I/O service or client, indicating that this style of socket communication might fit within the point-to-point channel paradigm.
 
-\begin{figure*}[b]
-  \begin{center}
-    \subfigure[Textedit latency measurements]{\label{fig:edge-b}\includegraphics[scale=0.75]{textedit.ps}} \\
-  \end{center}
-  \caption{Comparison between unmodified and channels-based versions of Qt}
-  \label{fig:benchmarks}
-\end{figure*}
-
 \subsection{Resource Allocation Daemon}
 
-The purpose of resource allocation daemon is to provide any services and clients with whatever hardware resources that they are requesting. One type of resource that all clients and services will need is CPU. This is one of the first things that the clients and the systems will have to request for.
+The resource allocation daemon is one of the crucial parts of the system. It uses Linux's existing {\tt cpuset} mechanism to group tasks into sets, and then pin each set to a subset of CPU cores. This is a strong isolation mechanism; once added to a cpuset, a process will only run on the cores assigned to that cpuset~\cite{cpusets}.
 
-One point to note here is that the client will not request, say, a guaranteed portion of the graphic driver directly to the resource allocation daemon. It's actually the service will request a big portion of this resource. Then, the client will request its portion of this resource from the service to do whatever the client wants. 
+There are a number of similar mechanisms on Linux that can also be used for pinning processes to cores (e.g. {\tt pbind}, {\tt sched\_setaffinity}), but cpusets have a few advantages over the alternatives. Cpusets make management of a large number of processes easier because they can be hierarchically nested (i.e., sets within sets). They are also persistent across, and can be configured to automatically assign new processes to a default set. Cpusets are also exposed through a special {\tt /dev} interface, meaning they can be manipulated directly from the command line without special tools.
 
-There is a huge possibility of separating the policy from the mechanism in our system. In that case, different priorities could be assigned to the clients and a client who has a higher priority will be entitled to more share of the resources. However, due to time constraints, we leave this possibility for future work
+The clearest explanation of the functionality of the resource allocation daemon is through example. When the daemon is started up, it creates a default cpuset to which it grants access to all cores on the system. The daemon then moves all running processes to this default cpuset; this has the additional effect of assigning all future processes to this set, because all forked children of processes in the set start in the same set as their parent.
+
+Processes that wish to be isolated have to explicitly query the resource allocation daemon for a new core. The daemon will then examine the number of cores already being used by isolated processes. If there are still cores available, the daemon will create a new cpuset, allocate it exclusive access to an unused CPU, and then move the process to this new cpuset. When an isolated process finishes running, the daemon recovers the core and adds it back to the default cpuset for further use.
+
+\textbf{Limitations.} This initial implementation is admittedly rudimentary; it can only allocate CPUs at the granularity of entire cores, it does not handle other resources such as memory, cache, or the hard drive, and does not have any policy mechanisms whatsoever. These are all limitations tackled by Tessellation's two-level scheduling and space-time partitioning; together, they allow for dynamic, fine-grained policies regarding many types of resource allocation; we defer to their publications for full details~\cite{liu09tessellation}~\cite{tessellation-hotpar10}.
+
+\textbf{Service/client allocation.} There is one more important aspect of resource allocation that we wish to highlight. When applications are heavily dependent on system services, it is desirable for the service to be able to "bill" the client for actions taken on its behalf. This can be done in either a bottom up or top down approach. In the former, a service is given an allocation of resources, and decides internally how best to split time among its clients. In the latter, clients are instead given an allocation that they can give out to services to perform actions on their behalf.
+
+The core difference in these two models is where policies are enforced; the bottom up approach complicates services, which need to be able to maximize utility among their client applications, while the top down approach complicates applications, which will need to maximize their utility across multiple services.
 
 \section{Evaluation}
 
@@ -180,7 +180,7 @@ We encountered difficulties in getting both the modified and unmodified version 
 
 \subsection{Channels}
 
-To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were a bit larger (<200 bytes). As shown in Table \ref{tab:channel}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can still push 2.5 MB/s even for small 4 byte messages.
+To show that our channel implementation was not bottlenecking our Qt applications, we wrote a variety of stress test and benchmarking suites to test latency, throughput, and correctness. Profiling of client / service communication revealed that vast majority of messages were small (4-24 bytes) with a few that were a bit larger ($<$200 bytes). As shown in Table \ref{tab:channel}, our channel implementation handles sending these types of messages with latency in the range of microseconds. The rate at which Qt sends messages is also rather low, but our channels implementation can still push 2.5 MB/s even for small 4 byte messages.
 
 \begin{table}[tp]
 \caption{Channel Benchmarks}
@@ -202,7 +202,7 @@ The first user application we chose for testing was a simple Qt web browser base
 
 We chose to use Apple's SunSpider JS benchmark, which is mostly CPU-bound. Figure \ref{fig:benchmarks} shows the time to complete SunSpider, lower being better. In the no load case, the unmodified version of Qt performs roughly three times faster than our version. This is somewhat disappointing; our current guess is that signal handling within the channels is triggering a large number of context switches.
 
-However, the tables are turned in the loaded situation. Our version of Qt maintained roughly equivalent performance, while the unmodified version's performance degraded by more than a factor of 20 (and 7 times worse than our version). This is due to the performance isolation guaranteed by CPUSETs and the resource allocation daemon; Qt-C is guaranteed its allocation of the CPU even under load, while Qt has to share the CPU with other tasks and experiences additional scheduling and context switching overhead.
+However, the tables are turned in the loaded situation. Our version of Qt maintained roughly equivalent performance, while the unmodified version's performance degraded by more than a factor of 20 (and 7 times worse than our version). This is due to the performance isolation guaranteed by cpusets and the resource allocation daemon; Qt-C is guaranteed its allocation of the CPU even under load, while Qt has to share the CPU with other tasks and experiences additional scheduling and context switching overhead.
 
 \subsection{Textedit}
 
@@ -229,9 +229,9 @@ Qt-C, L	&0.26	&0.15	&0.42\\
 
 In this section, we wish to address a number of concerns that either fall outside of scope or remain unanswered by our analysis.
 
-\textbf{Batch processing throughput} The coarseness of the CPUSET mechanism means that the only way to give a strong resource guarantee to a process is to allocate at the level of entire cores. This clearly will have a strong effect on the throughput of background batch processing jobs (simulated in our case by load generating threads), since they are unable to use the cores allocated to GUI related processes. This effect was exacerbated by the low core count of our test machine; of its four cores, three were allocated to the service, client, and resource allocation daemon, leaving just one out of four for all remaining system processes and thus one fourth the throughput in our background jobs. However, this is not nearly as dire as it may seem; better timesharing of resources and increasing core counts will reduce the relative loss in performance.
+\textbf{Batch processing throughput.} The coarseness of the cpuset mechanism means that the only way to give a strong resource guarantee to a process is to allocate at the level of entire cores. This clearly will have a strong effect on the throughput of background batch processing jobs (simulated in our case by load generating threads), since they are unable to use the cores allocated to GUI related processes. This effect was exacerbated by the low core count of our test machine; of its four cores, three were allocated to the service, client, and resource allocation daemon, leaving just one out of four for all remaining system processes and thus one fourth the throughput in our background jobs. However, this is not nearly as dire as it may seem; better timesharing of resources and increasing core counts will reduce the relative loss in performance.
 
-\textbf{RA with unmodified Qt} Given that unmodified Qt also has the same service/client model, it is possible to combine it with the resource allocation daemon to get the same resource guarantees. We expect that this combination would actually be more efficient than our pairing, since socket communication is comparatively more efficient than our interrupt heavy channel implementation). However, this is somewhat orthogonal to the ultimate goal of porting to Tessellation. Tessellation provides a number of facilities that will greatly improve efficiency, such as lightweight user level signals, finer grained resource scheduling policies, and more explicit control over communication. We plan on further exploring this tradeoff between background and foreground tasks once the porting effort is complete.
+\textbf{RA with unmodified Qt.} Given that unmodified Qt also has the same service/client model, it is possible to combine it with the resource allocation daemon to get the same resource guarantees. We expect that this combination would actually be more efficient than our pairing, since socket communication is comparatively more efficient than our interrupt heavy channel implementation). However, this is somewhat orthogonal to the ultimate goal of porting to Tessellation. Tessellation provides a number of facilities that will greatly improve efficiency, such as lightweight user level signals, finer grained resource scheduling policies, and more explicit control over communication. We plan on further exploring this tradeoff between background and foreground tasks once the porting effort is complete.
 
 \section{Future Work}
 
