@@ -249,11 +249,13 @@ In this section, we wish to address a number of concerns that either fall outsid
 
 \textbf{Composable SLAs.} One of the key questions being examined by Tessellation group is whether there is an "SLA explosion" effect due to nested service dependencies. These dependencies of services on other services could rapidly degrade performance guarantees, due to the additional uncertainty added with each layer. The question is whether existing operating systems suffer from this type of deep nesting of services, and if so, can operating system services can be structured in such a way to avoid this problem.
 
-\textbf{Policy.} load shedding in services, priorities, background vs. foreground, automatic detection of how resource allocation affects performance
+\textbf{Policy.} Resource allocation and scheduling policies is one of the more interesting thrusts for further work. Some of are ideas are to implement forms of load shedding in services as a method of graceful degradation, integrating dynamic priorities for applications based on user interaction, and automatic profiling of how resource allocation affects application performance.
 
-\textbf{Parallelism.} making services more parallel, running more apps at once, scaling them dynamically based on resource needs
+\textbf{Decomposition.} 
 
-Another possible idea for future work is that we could improve the performance of each components of our system. An example of this will be to enable our channel to use interrupt "rate-limiting" instead of interrupts only mechanism to minimize the overhead since we notice that Qt sends data in batches of mostly tens of bytes. One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the services, we are pretty sure that they are not parallelized thoroughly yet. 
+making services more parallel, running more apps at once, scaling them dynamically based on resource needs
+
+One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the services, we are pretty sure that they are not parallelized thoroughly yet. 
 
 In order to improve the performance further, we should decompose a more complicated client applications to be served by more number of services. Take the browser as an example. The browser could have its html parser as one service and the lexer as one service. Even more, we could distinguish the service that handles html display from the service that handles flash display.
 
