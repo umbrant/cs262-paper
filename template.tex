@@ -125,6 +125,7 @@ There is a slight chicken and egg problem here, since an application needs to al
 \subsection{Qt Embedded}
 
 The primary reason we chose to modify Qt Embedded was because of its advertised ease of porting to other platforms. Qt Embedded already provides support for Embedded Linux, Windows Mobile, Symbian, and MeeGo, and has minimal architecture and OS requirements for further porting efforts to Tessellation OS~\cite{qtembedded}.
+
  Qt Embedded runs directly on a framebuffer with the provided software renderer, removing the need for writing a real graphics driver or also porting the X stack and a window manager. This ease of porting has been leveraged in at least one other operating system research project we are aware of~\cite{ibos}. 
 
 Qt Embedded is structured as a service/client model that separates the responsibilities of receiving and handling user interaction, as well as the responsibilities of rendering and drawing to the screen. The I/O service initially receives all mouse and keyboard events and forwards them to the correct client application. The application then processes the event and renders any changes to a shared memory region. The service is then responsible for using the graphics driver to copy the rendered image to the screen. This division of responsibilities made Qt Embedded a natural target for our project.
