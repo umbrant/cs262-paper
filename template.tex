@@ -68,7 +68,7 @@ The manycore machines of the future will likely run a diverse set of concurrent 
 
 \section{Introduction}
 
-Computer architecture is undergoing a fundamental shift that dictates an equally fundamental shift in operating systems. Moore's law is now being applied to CPU cores rather than clock rate, meaning that commodity processors could soon be have tens, even hundreds of cores. Current operating systems are not well suited for this ``manycore'' future; Recent research indicates that scaling of the base operating system itself might not be an issue~\cite{linux:osdi10}, but still leaves open the problem of how to gracefully run a variety of concurrent applications with different performance and resource requirements, especially on single user systems.
+Computer architecture is undergoing a fundamental shift that dictates an equally fundamental shift in operating systems. Moore's law is now being applied to CPU cores rather than clock rate, meaning that commodity processors could soon be have tens, even hundreds of cores. Current operating systems are not well suited for this ``manycore'' future; recent research indicates that scaling of the base operating system itself might not be an issue~\cite{linux:osdi10}, but still leaves open the problem of how to gracefully run a variety of concurrent applications with different performance and resource requirements, especially on single user systems.
 
 Already, running a parallel kernel build while watching a movie degrades framerates to unwatchable levels~\cite{DBLP:conf/osdi/YangLBKM08}. This will only be exacerbated by manycore architectures, since users are likely to simultaneously run a mix of highly parallel interactive, real-time, and batch jobs~\cite{liu09tessellation}. This puts additional stress on schedulers, requiring that they present the right tradeoff between latency-sensitive, real-time, and throughput applications without putting too much additional burden on users or application programmers to manually specify policies. These requirements are already found in specialized applications such as state-of-the-art humanoid robotics, which have very demanding hard and soft real-time requirements~\cite{Yoo:2009:RPD:1618617.1618723, Kaneko04humanoidrobot}. 
 
@@ -76,17 +76,9 @@ It is clear that the current generation of best effort schedulers do not meet th
 
 This can be phrased as applications requiring \textit{performance isolation} even under contention for shared resources. This problem is addressed by the Tessellation research operating system through two mechanisms: space-time partitioning and two-level scheduling~\cite{liu09tessellation}~\cite{tessellation-hotpar10}. These mechanisms are achieved through novel software/hardware integration, one key aspect being microkernel-style services that each implement a single OS function, and can provide their own service level agreements based on their resource allocation. Further detail is deferred to the Tessellation references, but these mechanisms allow Tessellation to make strong space-time resource guarantees such as ``2 cores for 50\% of the time'' or ``500 disk I/O operations a second'' to applications. Given these guarantees, applications can then make their own assurances about their performance to the user, attaining performance isolation.
 
-Our contribution in this paper is taking some of these ideas from Tessellation and translating them to a recent Linux distribution. We started with the goal of decomposing a number of GUI applications into services that each provide a specific, limited function, and then using Linux's CPU pinning mechanisms to assign each service its own core. Our work resulted in a modified, service-oriented version of the Qt GUI application framework as well as a resource allocation daemon that can provide strong resource guarantees to our Qt GUI applications. We compare two realistic Qt applications under idle and loaded conditions to show that this approach does not impose a significant performance overhead, and that it performs far better in terms of throughput and interactivity under resource contention.
+Our contribution is taking some of these ideas from Tessellation and translating them to a recent Linux distribution. We started with the goal of decomposing a number of GUI applications into services that each provide a specific, limited function, and then using Linux's CPU pinning mechanisms to assign each service its own core. Our work resulted in a modified, service-oriented version of the Qt GUI application framework as well as a resource allocation daemon that can provide strong resource guarantees to our Qt GUI applications. We compare two realistic Qt applications under idle and loaded conditions to show that this approach does not impose a significant performance overhead and that it performs far better in terms of throughput and interactivity under resource contention.
 
-One longer-term goal that influenced our project is porting Qt to Tessellation OS. Ideally, this system would have been built on top of Tessellation to begin with, but due to the pre-alpha stage of the Tessellation code base, required functionality for a Qt port, such as a graphics driver, shared memory, and interprocess communication, were not in a state ready to support our project. However, many of our design and implementation decisions were still heavily influenced by this long term porting goal; some aspects of our system depend on Tessellation OS functionality (such as lightweight user-level interrupts) that make some parts of our system relatively less efficient than a traditional Linux version. 
-
-%This paper presents a proof-of-concept schedulers from Tessellation OS~\cite{liu09tessellation, tessellation-hotpar10} to show that a fundamentally different scheduler is required as we progress into the era of many-cores. The scheduler that we are proposing here takes feedback from the requirements of the application and that it either guarantees the requirements strictly or it does not.
-
-%Before we delve into the details of the scheduler, we would like to give an overview on how things are structured in the Tessellation OS model. The concept of space-time partitioning is introduced here which basically means that each service (e.g., media player, file system) in the operating system will be allocated a subset of the cores for an exact portion of a time. 
-
-%With such kind of system, it will be much easier to preserve the interactivity of the GUI applications because effectively, the performance of each of the applications will be isolated from each other. Hence, even if there is a intensive CPU bound task that is running in the background, our media player's performance is not going to be impacted by it as we are going to prove later in the paper.
-
-%Note that we built our system on top of Linux due to the fact that the code base for Tessellation OS is on its very alpha stage currently. While in Linux, the mechanisms that we are building each components of our system on is very stable, e.g. shared memory segment and the UNIX signalling primitives. In addition to that, it will be interesting to see if a solution to this problem could be patched into the commodity operating systems and that if there is any need to build a new operating system.
+One longer-term goal that influenced our project is porting Qt to Tessellation OS. Ideally, this system would have been built on top of Tessellation to begin with, but due to the pre-alpha stage of the Tessellation code base, required functionality for a Qt port (such as a graphics driver, shared memory, and interprocess communication) were not in a state ready to support our project. However, many of our design and implementation decisions were still heavily influenced by this long term porting goal. Some aspects of our system assume the existence of proposed Tessellation OS functionality (such as lightweight user-level interrupts), making our system relatively less efficient than a traditional Linux version.
 
 \section{Related Work}
 
@@ -175,8 +167,8 @@ The core difference in these two models is where policies are enforced; the bott
 
 \begin{figure*}[t]
   \begin{center}
-    \subfigure[Sunspider JS benchmark]{\label{fig:edge-a}\includegraphics[scale=0.75]{sunspider.ps}}
-    \subfigure[Textedit latency measurements]{\label{fig:edge-b}\includegraphics[scale=0.75]{textedit.ps}} \\
+    \subfigure[Sunspider JS benchmark]{\label{fig:sunspider}\includegraphics[scale=0.75]{sunspider.ps}}
+    \subfigure[Textedit latency measurements]{\label{fig:textedit}\includegraphics[scale=0.75]{textedit.ps}} \\
   \end{center}
   \caption{Comparison between unmodified and channels-based versions of Qt}
   \label{fig:benchmarks}
@@ -193,24 +185,25 @@ To show that our channel implementation was not bottlenecking our Qt application
 Profiling of client / service communication revealed that the vast majority of messages being sent between the I/O service and application were small (in the range of 4-24 bytes) with a few that were a bit larger ($<$200 bytes). This unfortunately falls on the lower end of our channel's performance spectrum, but the rate at which keyboard and mouse events is relatively low and limited by user interaction. This means that 2.5MB/s of throughput is still more than sufficient for our purposes. More importantly, messages are sent with near-microsecond latency, which is far faster than can be perceived.
 
 \begin{table}[tp]
-\caption{Channel Benchmarks}
 \centering
-\label{tab:channel}
-\begin{tabular}{| l | l | l | l | l |}
+\begin{tabular}{| l | l | l |}
 \hline
-						&4B 	& 32B	&512B	&1024B\\ \hline
-Throughput (MB/s)		&2.5	&20.1	&280.0	&583.5\\
-Latency ($\mu$s/msg)	&1.53	&1.52	&1.74	&1.67\\
+Msg size	&Rate (MB/s)		& Latency ($\mu$s) \\ \hline
+4B		&2.5	& 1.53 \\
+32B		&20.1	& 1.52 \\
+512B	&280.0	& 1.74 \\
+1024B	&583.5	& 1.67 \\
 \hline
 \end{tabular}
+\caption{Channel benchmarks}
+\label{tab:channel}
 \end{table}
-
 
 \subsection{Web Browser}
 
 The first user application we chose for testing was a simple Qt web browser based on WebKit, included with the Qt source code. Browsers are one of the most commonly used and installed user applications, making this Qt web browser a representative choice as a ``real world'' application. Testing browser performance is also easy through the use of a wide variety of Javascript benchmark suites, such as SunSpider~\cite{sunspider}, Kraken~\cite{kraken}, and V8~\cite{v8benchmark}.
 
-We chose to use Apple's SunSpider JS benchmark, which is mostly CPU-bound. Figure \ref{fig:benchmarks} shows the time to complete SunSpider, lower being better. In the no load case, the unmodified version of Qt performs roughly three times faster than our version. This is somewhat disappointing; our current guess is that signal handling within the channels is triggering enough context switches to trash the CPU cache, but even this seems unlikely to cause a 3x decrease in performance.
+We chose to use Apple's SunSpider JS benchmark, which is mostly CPU-bound. Figure \ref{fig:sunspider} shows the time to complete SunSpider, lower being better. In the no load case, the unmodified version of Qt performs roughly three times faster than our version. This is somewhat disappointing; our current guess is that signal handling within the channels is triggering enough context switches to trash the CPU cache, but even this seems unlikely to cause a 3x decrease in performance.
 
 However, the tables are turned in the loaded situation. Our version of Qt maintained roughly equivalent performance, while the unmodified version's performance degraded by more than a factor of 20 (and 7 times worse than our version). This is due to the performance isolation guaranteed by cpusets and the resource allocation daemon; Qt-C is guaranteed its allocation of the CPU even under load, while Qt has to share the CPU with other tasks and experiences additional scheduling and context switching overhead.
 
@@ -218,11 +211,9 @@ However, the tables are turned in the loaded situation. Our version of Qt mainta
 
 The second application we chose was the rich text editor, also included as one of the demo applications with the Qt source code. Compared to a browser, a text editor is a relatively simple application, but we feel it is a better test of interactive behavior. Users are likely to be less tolerant of jitter and latency in a text editor because of the expectation of immediate feedback on the screen and the near constant interaction through typing. 
 
-To this end, we instrumented both Qt and Qt-C to measure the time it took an event arriving at the I/O service to be received and handled by the client. Keyboard and mouse events representative of normal usage were then fed to the textedit. As illustrated in Figure \ref{fig:benchmarks} and Table \ref{tab:textedit_table}, Qt-C performs far better than Qt in terms of latency and variance in latency, with unmodified Qt performing highly erratically under load. This aligns with our own anecdotal experiences using both versions under load; with normal Qt, there is a noticeable delay in words appearing on screen, while the effect on the Qt-C version is imperceptible.
+To this end, we instrumented both Qt and Qt-C to measure the time it took an event arriving at the I/O service to be received and handled by the client. Keyboard and mouse events representative of normal usage were then fed to the textedit. As illustrated in Figure \ref{fig:textedit} and Table \ref{tab:textedit_table}, Qt-C performs far better than Qt in terms of latency and variance in latency, with unmodified Qt performing highly erratically under load. This aligns with our own anecdotal experiences using both versions under load; with normal Qt, there is a noticeable delay in words appearing on screen, while the effect on the Qt-C version is imperceptible.
 
 \begin{table}[htp]
-\caption{Textedit interactivity}
-\label{tab:textedit_table}
 \centering
 \begin{tabular}{|l | l | l | l |}
 \hline
@@ -233,6 +224,8 @@ Qt-C, NL	&0.16	&0.18	&0.033\\
 Qt-C, L	&0.26	&0.15	&0.42\\
 \hline
 \end{tabular}
+\caption{Textedit interactivity}
+\label{tab:textedit_table}
 \end{table}
 
 \subsection{Further concerns}
