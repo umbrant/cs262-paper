@@ -252,7 +252,7 @@ In this section, we wish to address a number of concerns that either fall outsid
 
 \section{Conclusion}
 
-In this paper, we have presented a proof that the research direction, i.e. cores partitioning, of Tessellation OS is one candidate for the winning solution in the era of many-cores. We have demonstrated a satisfying performance on intricate, real-world applications. Whether we will need a new operating system or not to preserve the interactivity of applications will be another unanswered question in our paper. This might be solved if we are able to successfully port our system to Tessellation and does experiments with it.
+Performance isolation for a diverse set of applications is necessary in the manycore world for smooth, low latency interactive performance. Our system uses ideas from the Tessellation research operating system to provide isolation properties on Linux, through the use of cpusets and processor pinning. Quantitative and qualitative results for two realistic GUI applications show that our system does not impose significant overhead, and does a superior job when under resource contention. Porting to the actual Tessellation OS will provide further efficiency, scheduling, and policy benefits.
 
 \section{Acknowledgements}
 
