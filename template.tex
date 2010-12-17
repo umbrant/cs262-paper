@@ -64,7 +64,7 @@ awang@eecs.berkeley.edu
 
 
 \subsection*{Abstract}
-The manycore machines of the future will likely run a diverse set of concurrent workloads. This places additional demands on resource allocation and scheduling policies of the operating system to ensure interactive behavior of foreground user applications while running high throughput batch processing jobs in the background. In our paper, we show that a degree of performance isolation can be achieved on Linux through the use of the existing cpuset mechanism for realistic GUI applications.
+The manycore machines of the future will likely run a diverse set of concurrent workloads. This places additional demands on resource allocation and scheduling policies of the operating system to ensure interactive behavior of foreground user applications while running high throughput batch processing jobs in the background. We apply some of the ideas from the Tessellation research operating system to show that a degree of performance isolation can be achieved on Linux for number of realistic GUI applications.
 
 \section{Introduction}
 
@@ -246,11 +246,11 @@ In this section, we wish to address a number of concerns that either fall outsid
 
 \textbf{Decomposition.} Our implementation only touches on the possibilities for decomposition for GUI applications. As mentioned earlier, there are many core system functions that could be made into services for more consistent performance, such as the network driver, disk I/O, and screen drawing. There is also room for further decomposition within an application; it is easy to imagine a complex application such as a web browser being divided into separate parts based on realtime, latency, and resource requirements.
 
-\textbf{Parallelism.} 
+\textbf{Parallelism.} While our project focuses on one aspect of manycore operating systems (performance isolation and resource guarantees), there is also the very real issue of how to design highly parallel software to make use of a manycore machine. We are investigating potential parallelization opportunities in both user applications and system services.
 
-One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the services, we are pretty sure that they are not parallelized thoroughly yet. 
+%One big aspect of performance amelioration is through parallelism. As time passes, there will be more and more cores in a CPU and our system should exploit that. Currently, our nameserver and resource allocation daemon is single threaded and although Qt uses multi-threading for the client applications and the services, we are pretty sure that they are not parallelized thoroughly yet. 
 
-In order to improve the performance further, we should decompose a more complicated client applications to be served by more number of services. Take the browser as an example. The browser could have its html parser as one service and the lexer as one service. Even more, we could distinguish the service that handles html display from the service that handles flash display.
+%In order to improve the performance further, we should decompose a more complicated client applications to be served by more number of services. Take the browser as an example. The browser could have its html parser as one service and the lexer as one service. Even more, we could distinguish the service that handles html display from the service that handles flash display.
 
 \section{Conclusion}
 
